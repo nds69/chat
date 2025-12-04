@@ -2,54 +2,97 @@
 <html lang="my">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real-time Chat</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Group Chat with Login</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script> 
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; display: flex; justify-content: center; height: 100vh; }
-        .chat-container { width: 100%; max-width: 500px; background: white; display: flex; flex-direction: column; height: 100%; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        .header { background: #0084ff; color: white; padding: 15px; text-align: center; font-weight: bold; }
-        
-        /* Chat Box */
-        .messages { flex: 1; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background-color: #e5ddd5;}
-        
-        .message { padding: 10px; border-radius: 10px; max-width: 75%; word-wrap: break-word; font-size: 15px; position: relative; }
-        .my-msg { background-color: #dcf8c6; align-self: flex-end; } /* ကိုယ်ပို့တဲ့စာ */
-        .other-msg { background-color: white; align-self: flex-start; } /* သူများပို့တဲ့စာ */
-        
-        .message img { max-width: 100%; border-radius: 5px; display: block; margin-bottom: 5px; }
-        .timestamp { font-size: 10px; color: #555; text-align: right; margin-top: 5px; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Inter', sans-serif; background-color: #f5f7fb; margin: 0; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
 
-        /* Input Area */
-        .input-area { padding: 10px; border-top: 1px solid #ddd; display: flex; align-items: center; background: white; }
-        input[type="text"] { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 20px; outline: none; }
-        button { background: #0084ff; color: white; border: none; padding: 10px 15px; margin-left: 8px; border-radius: 50%; cursor: pointer; font-weight: bold;}
-        .file-btn { font-size: 24px; margin-right: 10px; cursor: pointer; color: #555; }
+        /* Login Screen Design */
+        #loginScreen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: white; z-index: 100;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+        }
+        .login-btn {
+            background: #4285F4; color: white; border: none;
+            padding: 12px 24px; border-radius: 4px; font-size: 16px;
+            cursor: pointer; display: flex; align-items: center; gap: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        /* Chat UI (Hidden by default) */
+        #chatInterface { display: none; flex-direction: column; height: 100%; }
+
+        .header { background: white; padding: 10px 15px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 5px rgba(0,0,0,0.05); }
+        .user-profile { display: flex; align-items: center; gap: 10px; }
+        .user-profile img { width: 35px; height: 35px; border-radius: 50%; }
+        .logout-btn { background: #ff4d4f; color: white; border: none; padding: 5px 12px; border-radius: 15px; font-size: 12px; cursor: pointer; }
+
+        .chat-area { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        .message-row { display: flex; width: 100%; align-items: flex-end; gap: 8px; }
+        .my-row { flex-direction: row-reverse; }
+        
+        .avatar { width: 30px; height: 30px; border-radius: 50%; background: #ccc; flex-shrink: 0; }
+        
+        .bubble-container { display: flex; flex-direction: column; max-width: 70%; }
+        .sender-name { font-size: 10px; color: #777; margin-bottom: 2px; }
+        .my-row .sender-name { text-align: right; display: none; } /* ကိုယ့်နာမည်ကိုယ်မပြ */
+
+        .bubble { padding: 10px 14px; border-radius: 16px; font-size: 15px; line-height: 1.4; word-wrap: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .my-bubble { background: #0061ff; color: white; border-bottom-right-radius: 4px; }
+        .other-bubble { background: white; color: #333; border-bottom-left-radius: 4px; }
+        
+        .bubble img { max-width: 100%; border-radius: 8px; margin-top: 5px; }
+
+        /* Input Bar */
+        .input-bar { background: white; padding: 10px 15px; display: flex; align-items: center; border-top: 1px solid #eee; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+        .icon-btn { background: none; border: none; font-size: 24px; cursor: pointer; padding: 0 10px; }
+        .msg-input { flex: 1; background: #f0f2f5; border: none; padding: 12px 15px; border-radius: 20px; outline: none; }
+        .send-btn { background: #0061ff; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; margin-left: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;}
     </style>
 </head>
 <body>
 
-<div class="chat-container">
-    <div class="header">Chat Room</div>
-    
-    <div class="messages" id="messageList">
+    <div id="loginScreen">
+        <h2 style="color:#333; margin-bottom: 20px;">Chat Room</h2>
+        <button class="login-btn" onclick="googleLogin()">
+            <span>G</span> Login with Google
+        </button>
+    </div>
+
+    <div id="chatInterface">
+        <div class="header">
+            <div class="user-profile">
+                <img id="myAvatar" src="" alt="Profile">
+                <span id="myName" style="font-weight:600; font-size:14px;">User</span>
+            </div>
+            <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
 
-    <div class="input-area">
-        <label for="fileInput" class="file-btn">📷</label>
-        <input type="file" id="fileInput" accept="image/*" style="display: none;">
-        <input type="text" id="msgInput" placeholder="စာရိုက်ပါ...">
-        <button onclick="sendMsg()">➤</button>
+        <div class="chat-area" id="messageList"></div>
+
+        <div class="input-bar">
+            <label for="fileInput" class="icon-btn">📷</label>
+            <input type="file" id="fileInput" accept="image/*" style="display: none;">
+            <input type="text" class="msg-input" id="msgInput" placeholder="စာရိုက်ပါ..." autocomplete="off">
+            <button class="send-btn" onclick="sendMsg()">➤</button>
+        </div>
     </div>
-</div>
 
 <script>
     // --------------------------------------------------------------
-    // ၁။ ဒီနေရာမှာ Firebase ကပေးတဲ့ ကုဒ်တွေကို အစားထိုးပါ
+    // ⚠️ သင့် Firebase Config အဟောင်းကို ဒီမှာ ထည့်ပါ
     // --------------------------------------------------------------
-  const firebaseConfig = {
+    const firebaseConfig = {
   apiKey: "AIzaSyCUteIjOOPxPYrCutDSo9t0cVtLqnGTWxU",
   authDomain: "chat-27f21.firebaseapp.com",
   projectId: "chat-27f21",
@@ -59,82 +102,113 @@
 };
     // --------------------------------------------------------------
 
-    // Firebase စတင်ခြင်း
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-    }
+    // Initialize Firebase
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
     const db = firebase.firestore();
+    let currentUser = null;
 
-    // ကိုယ့်စက်အမှတ်အသား (မတူညီတဲ့ user ခွဲဖို့အတွက် ယာယီသုံးပါမယ်)
-    const myID = localStorage.getItem('userID') || 'user_' + Math.random().toString(36).substr(2, 9);
-    localStorage.setItem('userID', myID);
-
-    // ၂။ စာလက်ခံခြင်း (Real-time Listening)
-    db.collection("chats").orderBy("timestamp", "asc").onSnapshot((snapshot) => {
-        const list = document.getElementById("messageList");
-        list.innerHTML = ""; // ရှင်းထုတ်ပြီး အသစ်ပြန်စီ
-
-        snapshot.forEach((doc) => {
-            const data = doc.data();
-            const msgDiv = document.createElement("div");
-            
-            // ကိုယ်ပို့တာလား သူများပို့တာလား ခွဲခြားခြင်း
-            const msgClass = (data.sender === myID) ? "my-msg" : "other-msg";
-            msgDiv.className = `message ${msgClass}`;
-
-            let content = "";
-            if (data.image) {
-                content += `<img src="${data.image}">`;
-            }
-            if (data.text) {
-                content += `<div>${data.text}</div>`;
-            }
-            
-            msgDiv.innerHTML = content;
-            list.appendChild(msgDiv);
-        });
-
-        // အောက်ဆုံးရောက်အောင် ဆွဲချ
-        list.scrollTop = list.scrollHeight;
+    // --- Authentication Logic ---
+    
+    // Login အခြေအနေကို စောင့်ကြည့်ခြင်း
+    auth.onAuthStateChanged((user) => {
+        if (user) {
+            // Login ဝင်ထားရင် Chat ကို ပြမယ်
+            currentUser = user;
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('chatInterface').style.display = 'flex';
+            document.getElementById('myAvatar').src = user.photoURL;
+            document.getElementById('myName').innerText = user.displayName;
+            loadMessages(); // စာတွေကို ဆွဲထုတ်မယ်
+        } else {
+            // Login မဝင်ရသေးရင် Login ခလုတ်ကို ပြမယ်
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('chatInterface').style.display = 'none';
+        }
     });
 
-    // ၃။ စာပို့ခြင်း Function
+    // Google Login Function
+    function googleLogin() {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider).catch((error) => {
+            console.error(error);
+            alert("Login Error: " + error.message);
+        });
+    }
+
+    // Logout Function
+    function logout() {
+        auth.signOut();
+    }
+
+    // --- Chat Logic ---
+
+    function loadMessages() {
+        db.collection("chats").orderBy("timestamp", "asc").onSnapshot((snapshot) => {
+            const list = document.getElementById("messageList");
+            list.innerHTML = ""; 
+
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                const isMe = (currentUser && data.uid === currentUser.uid);
+
+                const row = document.createElement("div");
+                row.className = `message-row ${isMe ? "my-row" : "other-row"}`;
+
+                // တစ်ဖက်သားရဲ့ ပုံနဲ့ နာမည်
+                let avatarHtml = isMe ? "" : `<img src="${data.photo || 'https://via.placeholder.com/30'}" class="avatar">`;
+
+                let content = "";
+                if (data.image) content += `<img src="${data.image}">`;
+                if (data.text) content += `<div>${data.text}</div>`;
+
+                row.innerHTML = `
+                    ${avatarHtml}
+                    <div class="bubble-container">
+                        <span class="sender-name">${data.name || 'Unknown'}</span>
+                        <div class="bubble ${isMe ? "my-bubble" : "other-bubble"}">${content}</div>
+                    </div>
+                `;
+                list.appendChild(row);
+            });
+            list.scrollTop = list.scrollHeight;
+        });
+    }
+
     function sendMsg() {
+        if (!currentUser) return; // Login မဝင်ထားရင် မပို့ဘူး
+
         const input = document.getElementById("msgInput");
         const fileInput = document.getElementById("fileInput");
-        const text = input.value;
+        const text = input.value.trim();
         const file = fileInput.files[0];
 
         if (!text && !file) return;
 
-        // ပုံပါလာရင် Base64 ပြောင်းပြီး ပို့မယ်
         if (file) {
             const reader = new FileReader();
-            reader.onload = function(e) {
-                const base64Img = e.target.result;
-                saveToDB(text, base64Img);
-            }
+            reader.onload = (e) => saveToDB(text, e.target.result);
             reader.readAsDataURL(file);
         } else {
             saveToDB(text, null);
         }
 
-        // ရှင်းမယ်
         input.value = "";
         fileInput.value = "";
+        input.focus();
     }
 
-    // Database ထဲ သိမ်းခြင်း
     function saveToDB(text, img) {
         db.collection("chats").add({
             text: text,
             image: img,
-            sender: myID,
+            uid: currentUser.uid,          // User ID
+            name: currentUser.displayName, // Google Name
+            photo: currentUser.photoURL,   // Google Photo
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
     }
 
-    // Enter ခေါက်ရင် ပို့မယ်
     document.getElementById("msgInput").addEventListener("keypress", (e) => {
         if(e.key === "Enter") sendMsg();
     });
