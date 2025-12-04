@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time Chat</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; display: flex; justify-content: center; height: 100vh; }
+        .chat-container { width: 100%; max-width: 500px; background: white; display: flex; flex-direction: column; height: 100%; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .header { background: #0084ff; color: white; padding: 15px; text-align: center; font-weight: bold; }
+        
+        /* Chat Box */
+        .messages { flex: 1; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background-color: #e5ddd5;}
+        
+        .message { padding: 10px; border-radius: 10px; max-width: 75%; word-wrap: break-word; font-size: 15px; position: relative; }
+        .my-msg { background-color: #dcf8c6; align-self: flex-end; } /* ကိုယ်ပို့တဲ့စာ */
+        .other-msg { background-color: white; align-self: flex-start; } /* သူများပို့တဲ့စာ */
+        
+        .message img { max-width: 100%; border-radius: 5px; display: block; margin-bottom: 5px; }
+        .timestamp { font-size: 10px; color: #555; text-align: right; margin-top: 5px; }
+
+        /* Input Area */
+        .input-area { padding: 10px; border-top: 1px solid #ddd; display: flex; align-items: center; background: white; }
+        input[type="text"] { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 20px; outline: none; }
+        button { background: #0084ff; color: white; border: none; padding: 10px 15px; margin-left: 8px; border-radius: 50%; cursor: pointer; font-weight: bold;}
+        .file-btn { font-size: 24px; margin-right: 10px; cursor: pointer; color: #555; }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="header">Chat Room</div>
+    
+    <div class="messages" id="messageList">
+        </div>
+
+    <div class="input-area">
+        <label for="fileInput" class="file-btn">📷</label>
+        <input type="file" id="fileInput" accept="image/*" style="display: none;">
+        <input type="text" id="msgInput" placeholder="စာရိုက်ပါ...">
+        <button onclick="sendMsg()">➤</button>
+    </div>
+</div>
+
+<script>
+    // --------------------------------------------------------------
+    // ၁။ ဒီနေရာမှာ Firebase ကပေးတဲ့ ကုဒ်တွေကို အစားထိုးပါ
+    // --------------------------------------------------------------
+  const firebaseConfig = {
+  apiKey: "AIzaSyCUteIjOOPxPYrCutDSo9t0cVtLqnGTWxU",
+  authDomain: "chat-27f21.firebaseapp.com",
+  projectId: "chat-27f21",
+  storageBucket: "chat-27f21.firebasestorage.app",
+  messagingSenderId: "582814616396",
+  appId: "1:582814616396:web:251660e2a50635bc70dde9"
+};
+    // --------------------------------------------------------------
+
+    // Firebase စတင်ခြင်း
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.firestore();
+
+    // ကိုယ့်စက်အမှတ်အသား (မတူညီတဲ့ user ခွဲဖို့အတွက် ယာယီသုံးပါမယ်)
+    const myID = localStorage.getItem('userID') || 'user_' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem('userID', myID);
+
+    // ၂။ စာလက်ခံခြင်း (Real-time Listening)
+    db.collection("chats").orderBy("timestamp", "asc").onSnapshot((snapshot) => {
+        const list = document.getElementById("messageList");
+        list.innerHTML = ""; // ရှင်းထုတ်ပြီး အသစ်ပြန်စီ
+
+        snapshot.forEach((doc) => {
+            const data = doc.data();
+            const msgDiv = document.createElement("div");
+            
+            // ကိုယ်ပို့တာလား သူများပို့တာလား ခွဲခြားခြင်း
+            const msgClass = (data.sender === myID) ? "my-msg" : "other-msg";
+            msgDiv.className = `message ${msgClass}`;
+
+            let content = "";
+            if (data.image) {
+                content += `<img src="${data.image}">`;
+            }
+            if (data.text) {
+                content += `<div>${data.text}</div>`;
+            }
+            
+            msgDiv.innerHTML = content;
+            list.appendChild(msgDiv);
+        });
+
+        // အောက်ဆုံးရောက်အောင် ဆွဲချ
+        list.scrollTop = list.scrollHeight;
+    });
+
+    // ၃။ စာပို့ခြင်း Function
+    function sendMsg() {
+        const input = document.getElementById("msgInput");
+        const fileInput = document.getElementById("fileInput");
+        const text = input.value;
+        const file = fileInput.files[0];
+
+        if (!text && !file) return;
+
+        // ပုံပါလာရင် Base64 ပြောင်းပြီး ပို့မယ်
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64Img = e.target.result;
+                saveToDB(text, base64Img);
+            }
+            reader.readAsDataURL(file);
+        } else {
+            saveToDB(text, null);
+        }
+
+        // ရှင်းမယ်
+        input.value = "";
+        fileInput.value = "";
+    }
+
+    // Database ထဲ သိမ်းခြင်း
+    function saveToDB(text, img) {
+        db.collection("chats").add({
+            text: text,
+            image: img,
+            sender: myID,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    }
+
+    // Enter ခေါက်ရင် ပို့မယ်
+    document.getElementById("msgInput").addEventListener("keypress", (e) => {
+        if(e.key === "Enter") sendMsg();
+    });
+</script>
+
+</body>
+</html>
