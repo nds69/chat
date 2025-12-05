@@ -688,8 +688,10 @@
                     foundOthers = true;
                     // Admin Ban Button Logic
                     let banBtn = '';
+                    // Check if banned flag is explicitly true
+                    const isBanned = u.isBanned === true;
+                    
                     if (myData.isAdmin) {
-                        const isBanned = u.isBanned === true;
                         banBtn = `
                             <button onclick="toggleBanUser('${u.uid}', ${isBanned}, '${u.name}')" 
                                 class="btn" style="background:${isBanned ? '#4caf50' : '#ff4d4f'}; color:white; padding:5px 10px; font-size:12px; margin-left:10px;">
@@ -702,7 +704,7 @@
                         <div class="friend-card">
                             <img src="${u.photo}" class="avatar" style="width:50px; height:50px;" onclick="startChat('${u.uid}', '${u.name}')">
                             <div style="flex:1; margin-left:10px;">
-                                <div style="font-weight:600;">${u.name} ${u.isBanned ? '<span style="color:red; font-size:10px;">(BANNED)</span>' : ''}</div>
+                                <div style="font-weight:600;">${u.name} ${isBanned ? '<span style="color:red; font-size:10px;">(BANNED)</span>' : ''}</div>
                                 <div style="font-size:12px; color:var(--text-gray);">Tap to chat</div>
                             </div>
                             ${banBtn}
