@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Advanced Chat</title>
+    <title>Mini Social App</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script> 
@@ -13,109 +13,153 @@
 
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; margin: 0; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+        body { font-family: 'Roboto', sans-serif; background-color: #f0f2f5; margin: 0; padding-bottom: 60px; /* For Bottom Nav */ }
 
-        /* Login Screen */
+        /* --- Loading Overlay --- */
+        #loadingOverlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.8); z-index: 999;
+            justify-content: center; align-items: center; flex-direction: column;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3; border-top: 4px solid #1877f2; border-radius: 50%;
+            width: 40px; height: 40px; animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* --- Login Screen --- */
         #loginScreen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: white; z-index: 100;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
         }
+        .app-logo { font-size: 40px; color: #1877f2; font-weight: bold; margin-bottom: 20px; }
         .login-btn {
-            background: #4285F4; color: white; border: none; padding: 12px 24px; border-radius: 4px; font-size: 16px; cursor: pointer; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            background: #1877f2; color: white; border: none; padding: 12px 30px; 
+            border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer;
         }
 
-        /* Chat UI */
-        #chatInterface { display: none; flex-direction: column; height: 100%; }
+        /* --- Main Interface --- */
+        #appInterface { display: none; }
 
-        /* Header */
-        .header { background: white; padding: 10px 15px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #ddd; }
-        .user-profile { display: flex; align-items: center; gap: 10px; cursor: pointer; }
-        .user-profile img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #eee; }
-        .edit-hint { font-size: 10px; color: #0084ff; display: block; }
-        .logout-btn { background: #ff4d4f; color: white; border: none; padding: 6px 14px; border-radius: 20px; font-size: 12px; cursor: pointer; }
-
-        /* Chat Area */
-        .chat-area { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background-image: url('https://i.ibb.co/3s1f9Jq/default-wallpaper.png'); background-size: cover; }
-        
-        .message-row { display: flex; width: 100%; align-items: flex-end; gap: 8px; }
-        .my-row { flex-direction: row-reverse; }
-        
-        .avatar { width: 28px; height: 28px; border-radius: 50%; background: #ccc; flex-shrink: 0; object-fit: cover; }
-        
-        .bubble-container { display: flex; flex-direction: column; max-width: 75%; }
-        
-        .bubble { padding: 8px 12px; border-radius: 12px; font-size: 15px; line-height: 1.4; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); word-wrap: break-word;}
-        .my-bubble { background: #dcf8c6; color: black; border-bottom-right-radius: 0; }
-        .other-bubble { background: white; color: black; border-bottom-left-radius: 0; }
-        
-        .bubble img { max-width: 100%; border-radius: 8px; margin-top: 5px; }
-
-        /* Status Ticks (Sent/Seen) */
-        .msg-info { display: flex; justify-content: flex-end; align-items: center; gap: 3px; margin-top: 2px; }
-        .time { font-size: 10px; color: #999; }
-        .ticks { font-size: 10px; font-weight: bold; display: none; } /* Only show for my messages */
-        .my-row .ticks { display: inline; }
-        .tick-sent { color: #999; } /* Grey Tick */
-        .tick-seen { color: #34b7f1; } /* Blue Tick */
-
-        /* Input Bar */
-        .input-bar { background: white; padding: 8px 10px; display: flex; align-items: center; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
-        .icon-btn { font-size: 22px; padding: 0 10px; cursor: pointer; }
-        .msg-input { flex: 1; background: #fff; border: 1px solid #ddd; padding: 10px 15px; border-radius: 25px; outline: none; font-size: 15px; }
-        .send-btn { background: #0084ff; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; margin-left: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-
-        /* Edit Profile Modal */
-        #editModal {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5); z-index: 200; justify-content: center; align-items: center;
+        /* Top Header */
+        .header {
+            background: white; padding: 10px 15px; position: sticky; top: 0; z-index: 50;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center;
         }
-        .modal-content { background: white; padding: 20px; border-radius: 10px; width: 80%; text-align: center; }
-        .modal-btn { padding: 10px 20px; margin-top: 10px; border-radius: 5px; border: none; cursor: pointer; }
+        .header h1 { margin: 0; color: #1877f2; font-size: 24px; }
+
+        /* Tab Pages */
+        .tab-content { display: none; padding: 10px; }
+        .active-tab { display: block; }
+
+        /* --- Create Post Box --- */
+        .create-post { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); margin-bottom: 15px; }
+        .cp-top { display: flex; gap: 10px; margin-bottom: 10px; }
+        .cp-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: #ddd; }
+        .cp-input { 
+            flex: 1; border: none; background: #f0f2f5; border-radius: 20px; 
+            padding: 10px 15px; outline: none; font-size: 15px; 
+        }
+        .cp-actions { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #eee; padding-top: 10px; }
+        .photo-btn { color: #45bd62; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+        .post-btn { background: #1877f2; color: white; border: none; padding: 6px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .post-btn:disabled { background: #ccc; }
+
+        /* --- Feed Posts --- */
+        .post-card { background: white; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); margin-bottom: 15px; overflow: hidden; }
+        .pc-header { padding: 10px 15px; display: flex; align-items: center; gap: 10px; }
+        .pc-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+        .pc-info h4 { margin: 0; font-size: 15px; display: flex; align-items: center; gap: 4px; }
+        .admin-badge { color: #1877f2; font-size: 14px; } /* Blue Tick */
+        .pc-info span { font-size: 12px; color: #65676b; }
+        
+        .pc-content { padding: 0 15px 10px; font-size: 15px; }
+        .pc-image { width: 100%; display: block; max-height: 400px; object-fit: cover; margin-top: 5px; }
+        
+        .pc-footer { border-top: 1px solid #eee; padding: 10px; display: flex; align-items: center; gap: 5px; cursor: pointer; color: #65676b; font-weight: 500; }
+        .heart-icon { font-size: 20px; }
+        .liked { color: #e41e3f; } /* Red Heart */
+
+        /* --- Profile Tab --- */
+        .profile-card { background: white; border-radius: 8px; padding: 20px; text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .big-avatar { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #1877f2; margin-bottom: 10px; }
+        .edit-input { padding: 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 16px; width: 80%; text-align: center; margin-bottom: 10px; }
+        .save-btn { background: #42b72a; color: white; border: none; padding: 8px 20px; border-radius: 5px; font-size: 14px; cursor: pointer; }
+        .logout-link { display: block; margin-top: 20px; color: #e41e3f; text-decoration: none; font-size: 14px; cursor: pointer; }
+
+        /* --- Bottom Nav --- */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; width: 100%; background: white; height: 55px;
+            display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #ddd; z-index: 100;
+        }
+        .nav-item { font-size: 24px; color: #65676b; cursor: pointer; }
+        .nav-active { color: #1877f2; }
+
     </style>
 </head>
 <body>
 
-    <div id="loginScreen">
-        <h2 style="color:#333; margin-bottom: 20px;">Chat App</h2>
-        <button class="login-btn" onclick="googleLogin()"><span>G</span> Login with Google</button>
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+        <p style="margin-top:10px; color:#555;">Processing...</p>
     </div>
 
-    <div id="chatInterface">
+    <div id="loginScreen">
+        <div class="app-logo">Social App</div>
+        <button class="login-btn" onclick="googleLogin()">Login with Google</button>
+    </div>
+
+    <div id="appInterface">
+        
         <div class="header">
-            <div class="user-profile" onclick="openEditModal()">
-                <img id="myDisplayPic" src="" alt="Profile">
-                <div>
-                    <span id="myName" style="font-weight:600; font-size:14px; display:block;">User</span>
-                    <span class="edit-hint">ပုံပြောင်းရန် နှိပ်ပါ</span>
+            <h1>Social</h1>
+            <img id="headerAvatar" src="" style="width:30px; height:30px; border-radius:50%;" onclick="switchTab('profile')">
+        </div>
+
+        <div id="homeTab" class="tab-content active-tab">
+            <div class="create-post">
+                <div class="cp-top">
+                    <img id="postAvatar" class="cp-avatar" src="">
+                    <input type="text" id="postInput" class="cp-input" placeholder="ဘာတွေ တွေးနေလဲ...">
+                </div>
+                <img id="previewImg" style="width:100%; border-radius:8px; margin-bottom:10px; display:none;">
+                <div class="cp-actions">
+                    <label for="postImg" class="photo-btn">📷 Photo</label>
+                    <input type="file" id="postImg" accept="image/*" style="display:none" onchange="previewFile()">
+                    <button class="post-btn" onclick="submitPost()">Post</button>
                 </div>
             </div>
-            <button class="logout-btn" onclick="logout()">Logout</button>
+
+            <div id="feedContainer"></div>
         </div>
 
-        <div class="chat-area" id="messageList"></div>
+        <div id="profileTab" class="tab-content">
+            <div class="profile-card">
+                <img id="profilePic" class="big-avatar" src="">
+                <br>
+                <label style="font-size:12px; color:#1877f2; cursor:pointer;">
+                    Change Photo
+                    <input type="file" id="newProfileImg" accept="image/*" style="display:none;" onchange="uploadProfilePic()">
+                </label>
+                
+                <h3 style="margin:15px 0 5px 0;">Display Name</h3>
+                <input type="text" id="editNameInput" class="edit-input">
+                <br>
+                <button class="save-btn" onclick="updateName()">Save Name</button>
 
-        <div class="input-bar">
-            <label for="imgUpload" class="icon-btn">📷</label>
-            <input type="file" id="imgUpload" accept="image/*" style="display: none;">
-            <input type="text" class="msg-input" id="msgInput" placeholder="စာရိုက်ပါ..." autocomplete="off">
-            <button class="send-btn" onclick="sendMsg()">➤</button>
+                <div class="logout-link" onclick="logout()">Logout</div>
+            </div>
         </div>
-    </div>
 
-    <div id="editModal">
-        <div class="modal-content">
-            <h3>Change Profile Picture</h3>
-            <input type="file" id="profileUpload" accept="image/*" style="margin: 15px 0;">
-            <br>
-            <button class="modal-btn" style="background:#0084ff; color:white;" onclick="saveProfilePic()">Save</button>
-            <button class="modal-btn" style="background:#ddd;" onclick="closeEditModal()">Cancel</button>
-        </div>
+        <div class="bottom-nav">
+            <div class="nav-item nav-active" onclick="switchTab('home')">🏠</div> <div class="nav-item" onclick="switchTab('profile')">👤</div> </div>
+
     </div>
 
 <script>
     // --------------------------------------------------------------
-    // ⚠️ သင့် Firebase Config ကို ဒီမှာ ထည့်ပါ
+    // ⚠️ Firebase Config & ADMIN Setup
     // --------------------------------------------------------------
     const firebaseConfig = {
   apiKey: "AIzaSyCUteIjOOPxPYrCutDSo9t0cVtLqnGTWxU",
@@ -125,175 +169,218 @@
   messagingSenderId: "582814616396",
   appId: "1:582814616396:web:251660e2a50635bc70dde9"
 };
+    
+    // 🔴 ဒီနေရာမှာ Admin ဖြစ်စေချင်တဲ့ Gmail ကို ရိုက်ထည့်ပါ
+    const ADMIN_EMAIL = "mmtintaungkhaing@gmail.com"; 
     // --------------------------------------------------------------
 
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
+    
     let currentUser = null;
-    let myCurrentAvatar = ""; // ကိုယ်လက်ရှိသုံးနေတဲ့ပုံ
+    let myUserData = {};
 
-    // --- Authentication ---
+    // --- Loading Control ---
+    function showLoading(show) {
+        document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
+    }
+
+    // --- Auth Logic ---
     auth.onAuthStateChanged((user) => {
         if (user) {
             currentUser = user;
             document.getElementById('loginScreen').style.display = 'none';
-            document.getElementById('chatInterface').style.display = 'flex';
+            document.getElementById('appInterface').style.display = 'block';
             
-            // Database ထဲက ကိုယ့် Profile ပုံဟောင်းကို ရှာမယ်
-            db.collection('users').doc(user.uid).get().then((doc) => {
-                if(doc.exists && doc.data().photo) {
-                    myCurrentAvatar = doc.data().photo;
+            // Get or Create User Data in Firestore
+            const userRef = db.collection('users').doc(user.uid);
+            userRef.onSnapshot((doc) => {
+                if(doc.exists) {
+                    myUserData = doc.data();
                 } else {
-                    myCurrentAvatar = user.photoURL; // မရှိရင် Google ပုံသုံးမယ်
+                    // First time setup
+                    myUserData = {
+                        name: user.displayName,
+                        photo: user.photoURL,
+                        email: user.email,
+                        isAdmin: (user.email === ADMIN_EMAIL) // Admin Check
+                    };
+                    userRef.set(myUserData);
                 }
-                updateHeaderUI();
+                updateUI();
             });
 
-            loadMessages();
-            markMessagesAsSeen(); // ဝင်လာတာနဲ့ သူများစာတွေကို Seen လုပ်မယ်
+            loadFeed();
         } else {
             document.getElementById('loginScreen').style.display = 'flex';
-            document.getElementById('chatInterface').style.display = 'none';
+            document.getElementById('appInterface').style.display = 'none';
         }
     });
 
-    function googleLogin() {
-        auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(alert);
-    }
+    function googleLogin() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
     function logout() { auth.signOut(); }
 
-    function updateHeaderUI() {
-        document.getElementById('myDisplayPic').src = myCurrentAvatar;
-        document.getElementById('myName').innerText = currentUser.displayName;
+    function updateUI() {
+        document.getElementById('headerAvatar').src = myUserData.photo;
+        document.getElementById('postAvatar').src = myUserData.photo;
+        document.getElementById('profilePic').src = myUserData.photo;
+        document.getElementById('editNameInput').value = myUserData.name;
     }
 
-    // --- Profile Editing (Upload & Save) ---
-    function openEditModal() { document.getElementById('editModal').style.flex = 'flex'; document.getElementById('editModal').style.display = 'flex'; }
-    function closeEditModal() { document.getElementById('editModal').style.display = 'none'; }
-
-    function saveProfilePic() {
-        const file = document.getElementById('profileUpload').files[0];
-        if (!file) return alert("ပုံရွေးပါ");
+    // --- Tabs Switching ---
+    function switchTab(tabName) {
+        // Hide all
+        document.getElementById('homeTab').style.display = 'none';
+        document.getElementById('profileTab').style.display = 'none';
         
-        // 1MB Limit စစ်မယ် (Database မလေးအောင်)
-        if (file.size > 1000000) return alert("ပုံဆိုဒ် ကြီးလွန်းပါတယ်။ 1MB အောက် ပုံရွေးပါ။");
+        // Remove active color from nav
+        const navs = document.querySelectorAll('.nav-item');
+        navs[0].classList.remove('nav-active');
+        navs[1].classList.remove('nav-active');
 
+        // Show selected
+        if(tabName === 'home') {
+            document.getElementById('homeTab').style.display = 'block';
+            navs[0].classList.add('nav-active');
+        } else {
+            document.getElementById('profileTab').style.display = 'block';
+            navs[1].classList.add('nav-active');
+        }
+    }
+
+    // --- Profile & Name Editing ---
+    function updateName() {
+        const newName = document.getElementById('editNameInput').value;
+        if(!newName) return;
+        
+        showLoading(true);
+        db.collection('users').doc(currentUser.uid).update({ name: newName }).then(() => {
+            showLoading(false);
+            alert("နာမည်ပြောင်းလဲလိုက်ပါပြီ!");
+        });
+    }
+
+    function uploadProfilePic() {
+        const file = document.getElementById('newProfileImg').files[0];
+        if(!file) return;
+        
+        if (file.size > 1000000) return alert("File too large! Max 1MB.");
+
+        showLoading(true); // Loading စပြမည်
         const reader = new FileReader();
         reader.onload = function(e) {
-            const base64Img = e.target.result;
-            // Database မှာ သိမ်းမယ် ('users' collection သီးသန့်ဆောက်ပြီး)
-            db.collection('users').doc(currentUser.uid).set({
-                photo: base64Img
-            }, { merge: true }).then(() => {
-                myCurrentAvatar = base64Img;
-                updateHeaderUI();
-                closeEditModal();
-                alert("Profile ပုံ ပြောင်းလဲလိုက်ပါပြီ!");
+            const base64 = e.target.result;
+            db.collection('users').doc(currentUser.uid).update({ photo: base64 }).then(() => {
+                showLoading(false); // Loading ပြီးသွားပြီ
+                alert("Profile ပုံ ပြောင်းလဲပြီးပါပြီ!");
             });
         }
         reader.readAsDataURL(file);
     }
 
-    // --- Chat Logic & Read Receipts ---
+    // --- Feed Logic (Create & View) ---
+    
+    // Preview Image before posting
+    function previewFile() {
+        const file = document.getElementById('postImg').files[0];
+        const preview = document.getElementById('previewImg');
+        if(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => { preview.src = e.target.result; preview.style.display = 'block'; }
+            reader.readAsDataURL(file);
+        }
+    }
 
-    function loadMessages() {
-        db.collection("chats").orderBy("timestamp", "asc").onSnapshot((snapshot) => {
-            const list = document.getElementById("messageList");
-            list.innerHTML = ""; 
+    function submitPost() {
+        const text = document.getElementById('postInput').value;
+        const file = document.getElementById('postImg').files[0];
 
-            snapshot.forEach((doc) => {
-                const data = doc.data();
-                const isMe = (currentUser && data.uid === currentUser.uid);
+        if(!text && !file) return;
 
-                const row = document.createElement("div");
-                row.className = `message-row ${isMe ? "my-row" : "other-row"}`;
+        showLoading(true);
 
-                // တစ်ဖက်လူပုံ (Data ထဲကပုံကို သုံးမယ်၊ မရှိရင် အလွတ်)
-                let avatarHtml = isMe ? "" : `<img src="${data.photo || 'https://via.placeholder.com/30'}" class="avatar">`;
+        const savePostToDB = (imgData) => {
+            db.collection('posts').add({
+                text: text,
+                image: imgData,
+                uid: currentUser.uid,
+                authorName: myUserData.name,
+                authorPhoto: myUserData.photo,
+                isAdmin: myUserData.isAdmin || false, // Save Admin Status with post
+                likes: [],
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                showLoading(false);
+                // Clear inputs
+                document.getElementById('postInput').value = "";
+                document.getElementById('postImg').value = "";
+                document.getElementById('previewImg').style.display = 'none';
+            });
+        };
 
-                // Status Ticks (Sent vs Seen)
-                // status မရှိရင် 'sent' လို့ သတ်မှတ်
-                const status = data.status || 'sent';
-                const tickHtml = (status === 'seen') 
-                    ? `<span class="ticks tick-seen">✓✓</span>` // Seen (Blue)
-                    : `<span class="ticks tick-sent">✓</span>`;  // Sent (Grey)
+        if(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => savePostToDB(e.target.result);
+            reader.readAsDataURL(file);
+        } else {
+            savePostToDB(null);
+        }
+    }
 
-                let content = "";
-                if (data.image) content += `<img src="${data.image}">`;
-                if (data.text) content += `<div>${data.text}</div>`;
+    function loadFeed() {
+        db.collection('posts').orderBy('timestamp', 'desc').onSnapshot(snapshot => {
+            const container = document.getElementById('feedContainer');
+            container.innerHTML = "";
 
-                // Time Format
-                const date = data.timestamp ? data.timestamp.toDate() : new Date();
-                const timeStr = date.getHours() + ":" + (date.getMinutes()<10?'0':'') + date.getMinutes();
+            snapshot.forEach(doc => {
+                const post = doc.data();
+                const postId = doc.id;
+                
+                // Admin Badge HTML logic
+                const badgeHtml = post.isAdmin ? `<span class="admin-badge">✓</span>` : ``;
 
-                row.innerHTML = `
-                    ${avatarHtml}
-                    <div class="bubble-container">
-                        <div class="bubble ${isMe ? "my-bubble" : "other-bubble"}">${content}</div>
-                        <div class="msg-info">
-                            <span class="time">${timeStr}</span>
-                            ${tickHtml}
+                // Check if I liked this
+                const isLiked = post.likes && post.likes.includes(currentUser.uid);
+                const heartClass = isLiked ? "liked" : "";
+                const likeCount = post.likes ? post.likes.length : 0;
+
+                let contentHtml = "";
+                if(post.text) contentHtml += `<p>${post.text}</p>`;
+                if(post.image) contentHtml += `<img src="${post.image}" class="pc-image">`;
+
+                const html = `
+                    <div class="post-card">
+                        <div class="pc-header">
+                            <img src="${post.authorPhoto}" class="pc-avatar">
+                            <div class="pc-info">
+                                <h4>${post.authorName} ${badgeHtml}</h4>
+                                <span>${post.timestamp ? new Date(post.timestamp.toDate()).toLocaleTimeString() : 'Just now'}</span>
+                            </div>
+                        </div>
+                        <div class="pc-content">
+                            ${contentHtml}
+                        </div>
+                        <div class="pc-footer" onclick="toggleLike('${postId}', ${isLiked})">
+                            <span class="heart-icon ${heartClass}">♥</span> 
+                            <span>${likeCount} Likes</span>
                         </div>
                     </div>
                 `;
-                list.appendChild(row);
+                container.innerHTML += html;
             });
-            list.scrollTop = list.scrollHeight;
         });
     }
 
-    // သူများစာတွေကို 'seen' လို့ ပြောင်းပေးတဲ့ Function
-    function markMessagesAsSeen() {
-        // ကိုယ်မဟုတ်တဲ့စာတွေ၊ status က 'sent' ဖြစ်နေတာတွေကို ရှာမယ်
-        db.collection("chats")
-          .where("uid", "!=", currentUser.uid)
-          .where("status", "==", "sent")
-          .onSnapshot(snapshot => {
-              snapshot.forEach(doc => {
-                  // တစ်ခုချင်းစီကို 'seen' လို့ update လုပ်မယ်
-                  doc.ref.update({ status: 'seen' });
-              });
-          });
-    }
-
-    function sendMsg() {
-        const input = document.getElementById("msgInput");
-        const fileInput = document.getElementById("imgUpload");
-        const text = input.value.trim();
-        const file = fileInput.files[0];
-
-        if (!text && !file) return;
-
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => saveToDB(text, e.target.result);
-            reader.readAsDataURL(file);
+    function toggleLike(postId, isLiked) {
+        const postRef = db.collection('posts').doc(postId);
+        if(isLiked) {
+            postRef.update({ likes: firebase.firestore.FieldValue.arrayRemove(currentUser.uid) });
         } else {
-            saveToDB(text, null);
+            postRef.update({ likes: firebase.firestore.FieldValue.arrayUnion(currentUser.uid) });
         }
-
-        input.value = "";
-        fileInput.value = "";
-        input.focus();
     }
 
-    function saveToDB(text, img) {
-        db.collection("chats").add({
-            text: text,
-            image: img,
-            uid: currentUser.uid,
-            name: currentUser.displayName,
-            photo: myCurrentAvatar, // ကိုယ့်ရဲ့ Profile ပုံအသစ်ကို သုံးမယ်
-            status: 'sent',         // အစမှာ 'sent' အနေနဲ့ ပို့မယ်
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-    }
-
-    document.getElementById("msgInput").addEventListener("keypress", (e) => {
-        if(e.key === "Enter") sendMsg();
-    });
 </script>
-
 </body>
 </html>
