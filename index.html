@@ -408,7 +408,10 @@
     let feedUnsubscribe = null;
     let unreadListener = null;
     let editingPostId = null;
-    let unreadSenders = new Set(); // 🔥 NEW: Track individual senders
+    let unreadSenders = new Set();
+    
+    // 🔥 New: User Cache to update names automatically
+    let userCache = {};
 
     // --- THEME MANAGEMENT ---
     const checkTheme = () => {
@@ -532,7 +535,7 @@
         }
     };
 
-    // --- NOTIFICATION SYSTEM (MODIFIED) ---
+    // --- NOTIFICATION SYSTEM ---
     const startNotificationListener = () => {
         if(unreadListener) unreadListener();
         
@@ -545,11 +548,9 @@
                 unreadSenders.clear();
                 snap.forEach(d => unreadSenders.add(d.data().sender));
                 
-                // Update Global Badge
                 const badge = document.getElementById('chatBadge');
                 badge.style.display = snap.size > 0 ? 'block' : 'none';
                 
-                // Update Individual Friend Badges
                 document.querySelectorAll('.friend-noti-dot').forEach(el => el.style.display = 'none');
                 unreadSenders.forEach(uid => {
                     const dot = document.getElementById('noti-' + uid);
@@ -643,14 +644,18 @@
                     }
                     const displayText = makeLinksClickable(p.text || '');
                     const plainText = (p.text || '').replace(/"/g, '&quot;');
+                    
+                    // 🔥 Use cached user data if available for Feed (Optional, but good for consistency)
+                    const liveName = (userCache[p.uid]?.name) || p.authorName;
+                    const livePhoto = (userCache[p.uid]?.photo) || p.authorPhoto;
 
                     container.innerHTML += `
                         <div class="post-card">
                             <div class="pc-header">
-                                <div class="pc-user" onclick="startChat('${p.uid}', '${p.authorName}')">
-                                    <img src="${p.authorPhoto}" class="avatar" style="width:40px; height:40px;">
+                                <div class="pc-user" onclick="startChat('${p.uid}', '${liveName}')">
+                                    <img src="${livePhoto}" class="avatar" style="width:40px; height:40px;">
                                     <div>
-                                        <div class="pc-name">${p.authorName} ${adminIcon}</div>
+                                        <div class="pc-name">${liveName} ${adminIcon}</div>
                                         <div class="pc-time">${timeDisplay}</div>
                                     </div>
                                 </div>
@@ -682,6 +687,18 @@
 
     const deletePost = (id) => confirm("Delete this post?") && db.collection('posts').doc(id).delete();
     
+    // 🔥 NEW: Delete Comment with Confirmation Dialog
+    window.deleteComment = (id) => {
+        if(confirm("Are you sure you want to delete this comment?")) {
+            db.collection('comments').doc(id).delete().then(() => {
+                db.collection('posts').doc(activeTargetId).update({
+                    commentCount: firebase.firestore.FieldValue.increment(-1)
+                });
+                showToast("Comment deleted");
+            }).catch(e => showToast("Error deleting comment"));
+        }
+    };
+    
     const toggleLike = (id, loved) => {
         if(!currentUser) return showToast("Please Login to Like!");
         db.collection('posts').doc(id).update({
@@ -689,7 +706,7 @@
         });
     };
 
-    // --- FRIENDS LIST (MODIFIED) ---
+    // --- FRIENDS LIST ---
     const loadFriends = () => {
         if(!currentUser) return;
         document.getElementById('friendList').innerHTML = "<div style='text-align:center; padding:20px; color:var(--text-gray);'>Loading...</div>";
@@ -697,6 +714,12 @@
             const list = document.getElementById('friendList');
             list.innerHTML = "";
             let foundOthers = false;
+            
+            // 🔥 Update Global Cache
+            snap.forEach(d => {
+                userCache[d.id] = d.data();
+            });
+
             snap.forEach(d => {
                 const u = d.data();
                 if(u.uid !== currentUser.uid) {
@@ -712,7 +735,6 @@
                         `;
                     }
                     
-                    // 🔥 Unread indicator logic
                     const showDot = unreadSenders.has(u.uid) ? 'block' : 'none';
                     
                     list.innerHTML += `
@@ -722,11 +744,9 @@
                                 <div style="font-weight:600;">${u.name} ${isBanned ? '<span style="color:red; font-size:10px;">(BANNED)</span>' : ''}</div>
                                 <div style="font-size:12px; color:var(--text-gray);">Tap to chat</div>
                             </div>
-                            
                             <div id="noti-${u.uid}" class="friend-noti-dot" 
                                  style="width:10px; height:10px; background:#FF4D4F; border-radius:50%; display:${showDot}; margin-right:10px;">
                             </div>
-                            
                             ${banBtn}
                             <i class="ph-fill ph-chat-circle-dots" style="color:var(--primary); font-size:24px; cursor:pointer;" onclick="startChat('${u.uid}', '${u.name}')"></i>
                         </div>
@@ -759,8 +779,6 @@
             chatReceiverId = targetId;
             activeTargetId = [currentUser.uid, targetId].sort().join("_");
             title.innerText = name || "Chat";
-            
-            // Mark messages as read when opening chat
             markMessagesAsRead(targetId);
         } else {
             chatReceiverId = null;
@@ -794,12 +812,26 @@
             } else {
                 body.innerHTML = list.map(item => {
                     const txt = makeLinksClickable(item.text || '');
+                    
+                    // 🔥 FETCH LATEST NAME/PHOTO FROM CACHE
+                    const displayName = (userCache[item.uid]?.name) || item.userName;
+                    const displayPhoto = (userCache[item.uid]?.photo) || item.userPhoto;
+
                     if (mode === 'comment') {
+                        // 🔥 Add Delete Button Logic
+                        const isMyComment = currentUser.uid === item.uid || myData.isAdmin;
+                        const deleteBtn = isMyComment 
+                            ? `<i class="ph ph-trash" style="color:#ff4d4f; cursor:pointer; font-size:14px;" onclick="deleteComment('${item.id}')"></i>` 
+                            : '';
+
                         return `
                         <div style="display:flex; gap:10px; margin-bottom:15px;">
-                            <img src="${item.userPhoto}" class="avatar" style="width:32px; height:32px; margin-top:5px;">
+                            <img src="${displayPhoto}" class="avatar" style="width:32px; height:32px; margin-top:5px;">
                             <div class="bubble bubble-other">
-                                <span class="bubble-name">${item.userName}</span>
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
+                                    <span class="bubble-name">${displayName}</span>
+                                    ${deleteBtn}
+                                </div>
                                 <span class="bubble-content">${txt}</span>
                             </div>
                         </div>`;
@@ -929,6 +961,9 @@
         }).then(() => {
             showToast("Name updated!");
             document.getElementById('profileNameDisplay').innerText = newName;
+            // Also update local data immediately
+            myData.name = newName; 
+            userCache[currentUser.uid].name = newName;
         });
     };
     
@@ -941,6 +976,9 @@
                     photo: e.target.result 
                 }).then(() => {
                     showToast("Profile picture updated!");
+                    // Also update local data immediately
+                    myData.photo = e.target.result;
+                    userCache[currentUser.uid].photo = e.target.result;
                     updateUI();
                 });
             };
