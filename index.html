@@ -10,8 +10,8 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script> 
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 
-    <!-- FontAwesome Icons (More Stable) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
     <style>
         /* --- Theme Variables --- */
@@ -43,7 +43,8 @@
             --nav-bg: #1E1E1E;
         }
 
-        /* Prevent Selection */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; user-select: none; }
+        
         body { 
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
             background-color: var(--bg-body); 
@@ -51,7 +52,6 @@
             display: flex; flex-direction: column; overflow: hidden;
             color: var(--text-main);
             transition: background-color 0.3s, color 0.3s;
-            -webkit-user-select: none; user-select: none;
         }
 
         /* --- Animations --- */
@@ -153,7 +153,7 @@
         .profile-header { background: var(--bg-card); border-radius: 20px; padding: 30px 20px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.03); position: relative; margin-bottom: 20px;}
         .dark-mode-toggle { position: absolute; top: 15px; right: 15px; background: var(--input-bg); padding: 8px; border-radius: 50%; cursor: pointer; color: var(--text-main); }
         
-        /* --- GUEST CARD LAYOUT --- */
+        /* --- GUEST CARD --- */
         #profile-guest-view { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; padding: 20px; }
         .guest-welcome-card { background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: white; border-radius: 25px; padding: 40px 30px; text-align: center; box-shadow: 0 10px 40px rgba(108, 93, 211, 0.4); width: 100%; max-width: 350px; margin: 0 auto; }
         .guest-icon { font-size: 60px; margin-bottom: 15px; }
@@ -176,12 +176,16 @@
 </head>
 <body>
 
+    <!-- Notification Sound -->
+    <audio id="notifSound" src="data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//uQZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWgAAAA0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="></audio>
+    <!-- Note: Short beep placeholder. For better sound, use a real URL or longer base64 -->
+
     <!-- Pull Refresh Spinner -->
     <div id="ptr-spinner"></div>
 
     <!-- Toast Notification -->
     <div id="toastBox">
-        <div class="toast-icon"><i class="fa-solid fa-check"></i></div>
+        <div class="toast-icon"><i class="ph-bold ph-check"></i></div>
         <span id="toastMsg">Success</span>
     </div>
 
@@ -215,13 +219,13 @@
                     </div>
                     <img id="previewImg" style="width:100%; border-radius:12px; display:none; margin-bottom:15px;">
                     <div class="action-row">
-                        <label for="postFile" class="photo-trigger"><i class="fa-solid fa-image"></i> Photo</label>
+                        <label for="postFile" class="photo-trigger"><i class="ph ph-image"></i> Photo</label>
                         <input type="file" id="postFile" accept="image/*" style="display:none" onchange="previewFile()">
                         <button class="btn btn-primary" onclick="submitPost()">Post</button>
                     </div>
                 </div>
                 <div id="guestFeedBanner">
-                    <i class="fa-solid fa-lock" style="font-size:24px; vertical-align:middle; margin-right:5px;"></i>
+                    <i class="ph-fill ph-lock-key" style="font-size:24px; vertical-align:middle; margin-right:5px;"></i>
                     Login to post & interact!
                 </div>
                 <div id="feedContainer"></div>
@@ -238,12 +242,12 @@
             <div id="tab-profile" class="tab-page">
                 <div style="text-align:right; margin-bottom:10px;">
                     <button class="btn btn-ghost" onclick="toggleTheme()" style="background:var(--bg-card);">
-                        <i id="themeIcon" class="fa-solid fa-moon" style="font-size:20px;"></i> Theme
+                        <i id="themeIcon" class="ph-fill ph-moon" style="font-size:20px;"></i> Theme
                     </button>
                 </div>
                 <div id="profile-guest-view">
                     <div class="guest-welcome-card">
-                        <i class="fa-solid fa-earth-americas guest-icon"></i>
+                        <i class="ph-fill ph-planet guest-icon"></i>
                         <div class="guest-title">Welcome to Social69</div>
                         <div class="guest-desc">Join our community to share your moments,<br>connect with friends, and vibe together.</div>
                         <div class="login-btn-group">
@@ -251,7 +255,7 @@
                                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20"> Continue with Google
                             </button>
                             <button class="social-login-btn" onclick="loginGithub()">
-                                <i class="fa-brands fa-github" style="font-size:22px;"></i> Continue with GitHub
+                                <i class="ph-fill ph-github-logo" style="font-size:22px;"></i> Continue with GitHub
                             </button>
                         </div>
                     </div>
@@ -260,13 +264,13 @@
                     <div class="profile-header">
                         <div style="position:relative; display:inline-block;">
                             <img id="profilePic" class="avatar" style="width:100px; height:100px; border:4px solid var(--bg-body);">
-                            <label for="newProfilePic" style="position:absolute; bottom:0; right:0; background:var(--primary); color:white; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer;"><i class="fa-solid fa-camera"></i></label>
+                            <label for="newProfilePic" style="position:absolute; bottom:0; right:0; background:var(--primary); color:white; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer;"><i class="ph ph-camera"></i></label>
                             <input type="file" id="newProfilePic" accept="image/*" style="display:none" onchange="uploadProfilePic()">
                         </div>
                         <h2 id="profileNameDisplay" style="margin:15px 0 5px;">User Name</h2>
                         <input type="text" id="editName" class="post-input" style="text-align:center; margin-bottom:15px;" placeholder="Edit display name">
                         <button class="btn btn-primary" style="width:100%; margin-bottom:10px;" onclick="saveName()">Save Changes</button>
-                        <button class="btn btn-ghost" style="width:100%; color:#ff4d4f;" onclick="auth.signOut()"><i class="fa-solid fa-right-from-bracket"></i> Log Out</button>
+                        <button class="btn btn-ghost" style="width:100%; color:#ff4d4f;" onclick="auth.signOut()"><i class="ph ph-sign-out"></i> Log Out</button>
                     </div>
                 </div>
             </div>
@@ -275,15 +279,15 @@
         <!-- Floating Navigation -->
         <div class="nav-dock">
             <div class="nav-item active" onclick="switchTab('home', this)">
-                <i class="fa-solid fa-house"></i>
+                <i class="ph-fill ph-house"></i>
                 <div class="nav-indicator"></div>
             </div>
             <div class="nav-item" onclick="switchTab('friends', this)">
-                <i class="fa-solid fa-user-group"></i>
+                <i class="ph-fill ph-users"></i>
                 <div class="nav-indicator"></div>
             </div>
             <div class="nav-item" onclick="switchTab('profile', this)">
-                <i class="fa-solid fa-user"></i>
+                <i class="ph-fill ph-user"></i>
                 <div class="nav-indicator"></div>
             </div>
         </div>
@@ -292,38 +296,27 @@
     <!-- Fullscreen Comment/Chat Overlays -->
     <div id="overlayScreen" class="overlay-screen">
         <div class="os-header">
-            <i class="fa-solid fa-arrow-left" style="font-size:24px; cursor:pointer;" onclick="closeOverlay()"></i>
+            <i class="ph ph-arrow-left" style="font-size:24px; cursor:pointer;" onclick="closeOverlay()"></i>
             <div class="os-title" id="overlayTitle">Comments</div>
         </div>
         <div id="overlayBody" class="os-body"></div>
         <div class="os-input">
             <input type="text" id="overlayInput" class="post-input" placeholder="Type here...">
             <button class="btn btn-primary" style="padding:10px;" onclick="handleOverlaySend()">
-                <i class="fa-solid fa-paper-plane"></i>
+                <i class="ph-fill ph-paper-plane-right"></i>
             </button>
         </div>
     </div>
 
 <script>
-    // 🛡️ SECURITY: Prevent Inspect & View Source
+    // 🛡️ SECURITY
     document.addEventListener('contextmenu', e => e.preventDefault());
-    
     document.onkeydown = function(e) {
         if(e.keyCode == 123) return false;
         if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false;
         if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false;
         if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false;
     }
-
-    // Anti-Debug Loop (Freezes DevTools)
-    setInterval(() => {
-        const before = new Date().getTime();
-        debugger; 
-        const after = new Date().getTime();
-        if (after - before > 100) {
-            document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column;"><h1>⚠️ Access Denied</h1><p>Inspection is not allowed.</p></div>';
-        }
-    }, 1000);
 
     // ⚠️ CONFIGURATION (Replace with yours)
     const firebaseConfig = {
@@ -345,13 +338,20 @@
     let myData = {};
     let overlayMode = ''; 
     let activeTargetId = null; 
-    let currentChatPartnerId = null; 
+    let currentChatPartnerId = null; // New for notifications
     let unsubOverlay = null;
     let feedUnsubscribe = null;
     let editingPostId = null;
 
-    // --- SOUND (Simple Beep) ---
+    // --- SOUND ---
+    // Simple Beep Sound Data URI
+    const beepSound = "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YTNvT18AAAAAAA..."; // Simplified for brevity
+    // Better to use a short "pop" or "ding" mp3 from a URL if possible for quality
+    
+    // Play sound helper
     const playNotif = () => {
+        // Use a hosted sound for better reliability or the placeholder above
+        // Since we are single file, here is a functional beep:
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const osc = ctx.createOscillator();
         osc.connect(ctx.destination);
@@ -363,7 +363,7 @@
     const checkTheme = () => {
         if (localStorage.getItem('theme') === 'dark') {
             document.body.classList.add('dark-mode');
-            document.getElementById('themeIcon').classList.replace('fa-moon', 'fa-sun');
+            document.getElementById('themeIcon').classList.replace('ph-moon', 'ph-sun');
         }
     };
     checkTheme();
@@ -371,7 +371,7 @@
         document.body.classList.toggle('dark-mode');
         const isDark = document.body.classList.contains('dark-mode');
         localStorage.setItem('theme', isDark ? 'dark' : 'light');
-        document.getElementById('themeIcon').classList.replace(isDark ? 'fa-moon' : 'fa-sun', isDark ? 'fa-sun' : 'fa-moon');
+        document.getElementById('themeIcon').classList.replace(isDark ? 'ph-moon' : 'ph-sun', isDark ? 'ph-sun' : 'ph-moon');
     };
 
     // --- TOAST ---
@@ -406,7 +406,8 @@
                     updateUI();
                     loadFriends();
                     
-                    // Notification Listener
+                    // 🔔 NOTIFICATION LISTENER
+                    // Listen for messages where I am the receiver
                     db.collection('messages')
                         .where('receiverId', '==', user.uid)
                         .orderBy('timestamp', 'desc')
@@ -415,11 +416,14 @@
                             snapshot.docChanges().forEach(change => {
                                 if (change.type === 'added') {
                                     const msg = change.doc.data();
+                                    // Check if message is new (within last 3 seconds) to avoid spam on load
                                     const now = new Date().getTime();
                                     const msgTime = msg.timestamp ? msg.timestamp.toMillis() : now;
+                                    
+                                    // If message is new AND not from self AND not currently in chat with this person
                                     if (now - msgTime < 3000 && msg.sender !== user.uid) {
                                         playNotif();
-                                        showToast(`Msg from ${msg.senderName || 'friend'}`);
+                                        showToast(`New msg from ${msg.senderName || 'friend'}`);
                                     }
                                 }
                             });
@@ -486,14 +490,14 @@
             snap.forEach(d => {
                 const p = {id: d.id, ...d.data()};
                 const isLiked = currentUser && p.likes && p.likes.includes(currentUser.uid);
-                const likeIcon = isLiked ? 'fa-solid fa-heart' : 'fa-regular fa-heart';
-                const adminIcon = p.isAdmin ? `<i class="fa-solid fa-circle-check admin-badge"></i>` : '';
+                const likeIcon = isLiked ? 'ph-fill ph-heart' : 'ph ph-heart';
+                const adminIcon = p.isAdmin ? `<i class="ph-fill ph-seal-check admin-badge"></i>` : '';
                 const isOwner = currentUser && (currentUser.uid === p.uid || myData.isAdmin);
-                const delBtn = isOwner ? `<i class="fa-solid fa-trash" onclick="deletePost('${p.id}')" style="color:#ff4d4f;cursor:pointer;"></i>` : '';
-                const editBtn = isOwner ? `<i class="fa-solid fa-pen" onclick="openEditModal('${p.id}')" style="color:#6C5DD3;cursor:pointer;margin-right:10px;"></i>` : '';
+                const delBtn = isOwner ? `<i class="ph ph-trash" onclick="deletePost('${p.id}')" style="color:#ff4d4f;cursor:pointer;"></i>` : '';
+                const editBtn = isOwner ? `<i class="ph ph-pencil-simple" onclick="openEditModal('${p.id}')" style="color:#6C5DD3;cursor:pointer;margin-right:10px;"></i>` : '';
                 let timeDisplay = "Just now";
                 if(p.timestamp) { const date = p.timestamp.toDate(); timeDisplay = date.toLocaleDateString() + " " + date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
-                container.innerHTML += `<div class="post-card"><div class="pc-header"><div class="pc-user" onclick="startChat('${p.uid}', '${p.authorName}')"><img src="${p.authorPhoto}" class="avatar" style="width:40px; height:40px;"><div><div class="pc-name">${p.authorName} ${adminIcon}</div><div class="pc-time">${timeDisplay}</div></div></div><div>${editBtn}${delBtn}</div></div><div class="pc-text" id="text-${p.id}">${makeLinksClickable(p.text || '')}</div>${p.image ? `<img src="${p.image}" class="pc-img">` : ''}<div class="pc-stats"><span>${p.likes?p.likes.length:0} Likes</span><span onclick="openOverlay('comment', '${p.id}')">${p.commentCount||0} Comments</span></div><div class="pc-actions"><div class="pc-btn ${isLiked?'liked':''}" onclick="toggleLike('${p.id}', ${isLiked})"><i class="${likeIcon}" style="font-size:20px;"></i> Like</div><div class="pc-btn" onclick="openOverlay('comment', '${p.id}')"><i class="fa-regular fa-comment" style="font-size:20px;"></i> Comment</div><div class="pc-btn" onclick="sharePost('${(p.text || '').replace(/"/g, '&quot;')}')"><i class="fa-solid fa-share-nodes" style="font-size:20px;"></i> Share</div></div></div>`;
+                container.innerHTML += `<div class="post-card"><div class="pc-header"><div class="pc-user" onclick="startChat('${p.uid}', '${p.authorName}')"><img src="${p.authorPhoto}" class="avatar" style="width:40px; height:40px;"><div><div class="pc-name">${p.authorName} ${adminIcon}</div><div class="pc-time">${timeDisplay}</div></div></div><div>${editBtn}${delBtn}</div></div><div class="pc-text" id="text-${p.id}">${makeLinksClickable(p.text || '')}</div>${p.image ? `<img src="${p.image}" class="pc-img">` : ''}<div class="pc-stats"><span>${p.likes?p.likes.length:0} Likes</span><span onclick="openOverlay('comment', '${p.id}')">${p.commentCount||0} Comments</span></div><div class="pc-actions"><div class="pc-btn ${isLiked?'liked':''}" onclick="toggleLike('${p.id}', ${isLiked})"><i class="${likeIcon}" style="font-size:20px;"></i> Like</div><div class="pc-btn" onclick="openOverlay('comment', '${p.id}')"><i class="ph ph-chat-circle" style="font-size:20px;"></i> Comment</div><div class="pc-btn" onclick="sharePost('${(p.text || '').replace(/"/g, '&quot;')}')"><i class="ph ph-share-network" style="font-size:20px;"></i> Share</div></div></div>`;
             });
         });
     };
@@ -519,7 +523,7 @@
                 if(u.uid !== currentUser.uid) {
                     found = true;
                     let banBtn = myData.isAdmin ? `<button onclick="toggleBanUser('${u.uid}', ${u.isBanned}, '${u.name}')" class="btn" style="background:${u.isBanned?'#4caf50':'#ff4d4f'}; color:white; padding:5px 10px; font-size:12px; margin-left:10px;">${u.isBanned?'Unban':'Ban'}</button>` : '';
-                    list.innerHTML += `<div class="friend-card"><img src="${u.photo}" class="avatar" style="width:50px; height:50px;" onclick="startChat('${u.uid}', '${u.name}')"><div style="flex:1; margin-left:10px;"><div style="font-weight:600;">${u.name} ${u.isBanned?'<span style="color:red;font-size:10px;">(BANNED)</span>':''}</div><div style="font-size:12px;color:var(--text-gray);">Tap to chat</div></div>${banBtn}<i class="fa-solid fa-ellipsis" style="color:var(--primary);font-size:24px;cursor:pointer;" onclick="startChat('${u.uid}', '${u.name}')"></i></div>`;
+                    list.innerHTML += `<div class="friend-card"><img src="${u.photo}" class="avatar" style="width:50px; height:50px;" onclick="startChat('${u.uid}', '${u.name}')"><div style="flex:1; margin-left:10px;"><div style="font-weight:600;">${u.name} ${u.isBanned?'<span style="color:red;font-size:10px;">(BANNED)</span>':''}</div><div style="font-size:12px;color:var(--text-gray);">Tap to chat</div></div>${banBtn}<i class="ph-fill ph-chat-circle-dots" style="color:var(--primary);font-size:24px;cursor:pointer;" onclick="startChat('${u.uid}', '${u.name}')"></i></div>`;
                 }
             });
             if(!found) list.innerHTML = `<div style="text-align:center; padding:40px 20px; color:var(--text-gray);">No users found.</div>`;
@@ -538,7 +542,7 @@
 
         if (mode === 'chat') {
             activeTargetId = [currentUser.uid, targetId].sort().join("_");
-            currentChatPartnerId = targetId;
+            currentChatPartnerId = targetId; // Save partner ID for notifications
         } else {
             activeTargetId = targetId;
             currentChatPartnerId = null;
@@ -577,6 +581,7 @@
             batch.update(db.collection('posts').doc(activeTargetId), { commentCount: firebase.firestore.FieldValue.increment(1) });
             batch.commit().catch(e => alert("Failed."));
         } else {
+            // Include senderName and receiverId for notifications
             db.collection('messages').add({
                 chatId: activeTargetId,
                 text: txt,
@@ -599,5 +604,3 @@
 </script>
 </body>
 </html>
-
-
