@@ -408,6 +408,7 @@
     let feedUnsubscribe = null;
     let unreadListener = null;
     let editingPostId = null;
+    let unreadSenders = new Set(); // 🔥 NEW: Track individual senders
 
     // --- THEME MANAGEMENT ---
     const checkTheme = () => {
@@ -531,7 +532,7 @@
         }
     };
 
-    // --- NOTIFICATION SYSTEM ---
+    // --- NOTIFICATION SYSTEM (MODIFIED) ---
     const startNotificationListener = () => {
         if(unreadListener) unreadListener();
         
@@ -541,16 +542,20 @@
             .where('receiverId', '==', currentUser.uid)
             .where('isRead', '==', false)
             .onSnapshot(snap => {
-                const badge = document.getElementById('chatBadge');
-                console.log("📩 Unread messages:", snap.size);
+                unreadSenders.clear();
+                snap.forEach(d => unreadSenders.add(d.data().sender));
                 
-                if(snap.size > 0) {
-                    badge.style.display = 'block';
-                    console.log("✅ Showing notification badge");
-                } else {
-                    badge.style.display = 'none';
-                    console.log("❌ Hiding notification badge");
-                }
+                // Update Global Badge
+                const badge = document.getElementById('chatBadge');
+                badge.style.display = snap.size > 0 ? 'block' : 'none';
+                
+                // Update Individual Friend Badges
+                document.querySelectorAll('.friend-noti-dot').forEach(el => el.style.display = 'none');
+                unreadSenders.forEach(uid => {
+                    const dot = document.getElementById('noti-' + uid);
+                    if(dot) dot.style.display = 'block';
+                });
+
             }, error => {
                 console.error("Notification listener error:", error);
             });
@@ -564,18 +569,10 @@
           .where('isRead', '==', false)
           .get()
           .then(snap => {
-              if(snap.empty) {
-                  console.log("No unread messages to mark");
-                  return;
-              }
-              
+              if(snap.empty) return;
               const batch = db.batch();
-              snap.forEach(doc => {
-                  batch.update(doc.ref, { isRead: true });
-              });
-              batch.commit().then(() => {
-                  console.log(`✅ Marked ${snap.size} messages as read`);
-              });
+              snap.forEach(doc => batch.update(doc.ref, { isRead: true }));
+              batch.commit();
           });
     };
 
@@ -692,7 +689,7 @@
         });
     };
 
-    // --- FRIENDS LIST ---
+    // --- FRIENDS LIST (MODIFIED) ---
     const loadFriends = () => {
         if(!currentUser) return;
         document.getElementById('friendList').innerHTML = "<div style='text-align:center; padding:20px; color:var(--text-gray);'>Loading...</div>";
@@ -714,6 +711,10 @@
                             </button>
                         `;
                     }
+                    
+                    // 🔥 Unread indicator logic
+                    const showDot = unreadSenders.has(u.uid) ? 'block' : 'none';
+                    
                     list.innerHTML += `
                         <div class="friend-card">
                             <img src="${u.photo}" class="avatar" style="width:50px; height:50px;" onclick="startChat('${u.uid}', '${u.name}')">
@@ -721,6 +722,11 @@
                                 <div style="font-weight:600;">${u.name} ${isBanned ? '<span style="color:red; font-size:10px;">(BANNED)</span>' : ''}</div>
                                 <div style="font-size:12px; color:var(--text-gray);">Tap to chat</div>
                             </div>
+                            
+                            <div id="noti-${u.uid}" class="friend-noti-dot" 
+                                 style="width:10px; height:10px; background:#FF4D4F; border-radius:50%; display:${showDot}; margin-right:10px;">
+                            </div>
+                            
                             ${banBtn}
                             <i class="ph-fill ph-chat-circle-dots" style="color:var(--primary); font-size:24px; cursor:pointer;" onclick="startChat('${u.uid}', '${u.name}')"></i>
                         </div>
