@@ -3,175 +3,147 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>FB Style Social</title>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <title>Lite Social</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script> 
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 
     <style>
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: 'Roboto', sans-serif; background-color: #f0f2f5; margin: 0; padding-bottom: 60px; height: 100dvh; overflow: hidden; }
-
-        /* --- Loading & Login --- */
-        #loadingOverlay {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255, 255, 255, 0.8); z-index: 3000;
-            justify-content: center; align-items: center;
+        /* --- Performance Optimization & Reset --- */
+        :root { --primary: #1877f2; --bg: #f0f2f5; --white: #ffffff; --text: #050505; --gray: #65676b; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            background-color: var(--bg); margin: 0; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; 
         }
-        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #1877f2; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        #loginScreen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: white; z-index: 2000; display: flex; flex-direction: column; justify-content: center; align-items: center;
-        }
-        .login-btn { background: #1877f2; color: white; border: none; padding: 12px 30px; border-radius: 6px; font-weight: bold; cursor: pointer; }
-
-        /* --- Main Layout --- */
-        #appInterface { display: none; height: 100%; flex-direction: column; }
-        .header { background: white; padding: 12px 15px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; }
-        .header h1 { margin: 0; color: #1877f2; font-size: 24px; font-weight: 800; }
+        /* --- Components --- */
+        .btn { border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .btn-primary { background: var(--primary); color: var(--white); }
+        .btn-text { background: none; color: var(--gray); }
+        .avatar { border-radius: 50%; object-fit: cover; background: #ddd; }
         
-        .content-area { flex: 1; overflow-y: auto; background: #c9ccd1; } /* Darker bg for separation */
-        .tab-content { display: none; }
-        .active-tab { display: block; }
+        /* --- Login Screen --- */
+        #loginScreen { position: fixed; inset: 0; background: var(--white); z-index: 2000; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .logo { color: var(--primary); font-size: 40px; font-weight: 800; letter-spacing: -1px; margin-bottom: 20px; }
 
-        /* --- Create Post --- */
-        .create-post { background: white; padding: 15px; margin-bottom: 8px; }
-        .cp-row { display: flex; gap: 10px; margin-bottom: 10px; }
-        .cp-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
-        .cp-input { flex: 1; border: none; background: #f0f2f5; border-radius: 20px; padding: 10px 15px; outline: none; }
-        .post-btn { background: #1877f2; color: white; border: none; padding: 6px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; }
+        /* --- Layout --- */
+        #appInterface { display: none; flex-direction: column; height: 100%; }
+        .header { background: var(--white); padding: 10px 15px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; font-weight: bold; color: var(--primary); font-size: 22px; }
+        .content { flex: 1; overflow-y: auto; scroll-behavior: smooth; }
+        .tab-page { display: none; padding-bottom: 60px; } /* Bottom padding for nav */
+        .active { display: block; }
 
-        /* --- Post Card (FB Style) --- */
-        .post-card { background: white; margin-bottom: 8px; padding-top: 10px; }
-        .pc-header { padding: 0 15px 10px; display: flex; justify-content: space-between; align-items: flex-start; }
-        .pc-user { display: flex; gap: 10px; }
-        .pc-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
-        .pc-info h4 { margin: 0; font-size: 15px; color: #050505; }
-        .pc-info span { font-size: 12px; color: #65676b; }
-        .delete-btn { color: #65676b; font-size: 18px; cursor: pointer; }
+        /* --- Feed & Posts --- */
+        .create-box { background: var(--white); padding: 15px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .input-row { display: flex; gap: 10px; margin-bottom: 10px; }
+        .post-input { flex: 1; background: var(--bg); border: none; padding: 10px 15px; border-radius: 20px; font-size: 15px; }
+        
+        .post-card { background: var(--white); margin-bottom: 8px; padding-top: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .pc-head { padding: 0 15px 10px; display: flex; justify-content: space-between; align-items: flex-start; }
+        .pc-user { display: flex; gap: 10px; align-items: center; }
+        .pc-meta h4 { margin: 0; font-size: 15px; color: var(--text); }
+        .pc-meta span { font-size: 12px; color: var(--gray); }
+        .pc-body { padding: 0 15px 10px; font-size: 15px; line-height: 1.4; }
+        .pc-img { width: 100%; display: block; max-height: 500px; object-fit: cover; background: #eee; }
+        .pc-actions { border-top: 1px solid #eee; display: flex; padding: 5px 0; }
+        .act-btn { flex: 1; padding: 10px; display: flex; justify-content: center; align-items: center; gap: 6px; color: var(--gray); font-weight: 500; font-size: 14px; }
+        .liked { color: var(--primary); }
 
-        .pc-content { padding: 0 15px 10px; font-size: 15px; color: #050505; }
-        .pc-image { width: 100%; display: block; max-height: 500px; object-fit: cover; }
-
-        /* Stats & Actions */
-        .pc-stats { padding: 10px 15px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; color: #65676b; font-size: 13px; }
-        .pc-actions { display: flex; padding: 5px 0; }
-        .action-btn { flex: 1; background: none; border: none; padding: 8px; color: #65676b; font-weight: 600; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 6px; font-size: 14px; }
-        .action-btn:active { background: #f0f2f5; }
-        .liked { color: #1877f2; }
-
-        /* --- Comments Modal (Bottom Sheet) --- */
-        #commentModal {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5); z-index: 1500; display: none; justify-content: center; align-items: flex-end;
-        }
-        .cm-content {
-            background: white; width: 100%; height: 70%; border-radius: 15px 15px 0 0;
-            display: flex; flex-direction: column; animation: slideUp 0.3s ease;
-        }
+        /* --- Comments (Bottom Sheet) --- */
+        #commentModal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1500; display: none; justify-content: center; align-items: flex-end; }
+        .cm-box { background: var(--white); width: 100%; height: 75%; border-radius: 15px 15px 0 0; display: flex; flex-direction: column; animation: slideUp 0.3s; }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-        .cm-header { padding: 15px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
-        .cm-list { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 15px; }
-        
-        .comment-row { display: flex; gap: 10px; }
-        .cmt-avatar { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; }
-        .cmt-bubble { background: #f0f2f5; padding: 8px 12px; border-radius: 15px; }
-        .cmt-name { font-weight: bold; font-size: 13px; color: #050505; display: block; }
-        .cmt-text { font-size: 14px; }
+        .cm-head { padding: 15px; border-bottom: 1px solid #eee; font-weight: bold; display: flex; justify-content: space-between; }
+        .cm-list { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; }
+        .cm-item { display: flex; gap: 10px; }
+        .cm-bubble { background: var(--bg); padding: 8px 12px; border-radius: 12px; }
+        .cm-input-box { padding: 10px; border-top: 1px solid #eee; display: flex; gap: 10px; }
 
-        .cm-input-area { padding: 10px; border-top: 1px solid #ddd; display: flex; gap: 10px; }
-        .cm-input { flex: 1; padding: 10px; border-radius: 20px; border: 1px solid #ddd; outline: none; background: #f0f2f5; }
+        /* --- Private Chat (Full Screen) --- */
+        #chatScreen { position: fixed; inset: 0; background: var(--white); z-index: 2500; display: none; flex-direction: column; }
+        .chat-head { padding: 10px 15px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 16px; }
+        .chat-body { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 8px; background: var(--bg); }
+        .msg { padding: 8px 14px; border-radius: 18px; max-width: 75%; font-size: 15px; word-wrap: break-word; }
+        .msg-me { background: var(--primary); color: var(--white); align-self: flex-end; }
+        .msg-other { background: var(--white); color: var(--text); align-self: flex-start; border: 1px solid #ddd; }
+        .chat-foot { padding: 10px; background: var(--white); display: flex; gap: 10px; border-top: 1px solid #eee; }
 
         /* --- Friend List --- */
-        .friend-row { padding: 15px; background: white; display: flex; align-items: center; border-bottom: 1px solid #eee; gap: 15px; }
-        .friend-row:active { background: #f0f2f5; }
+        .friend-row { padding: 12px 15px; display: flex; align-items: center; gap: 15px; border-bottom: 1px solid #eee; cursor: pointer; }
+        .friend-row:active { background: var(--bg); }
 
-        /* --- Profile Tab --- */
-        .profile-card { background: white; padding: 20px; text-align: center; }
-        .edit-input { padding: 8px; border: 1px solid #ddd; border-radius: 6px; width: 70%; text-align: center; font-size: 16px; margin: 10px 0; }
-        .save-btn { background: #42b72a; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
+        /* --- Profile --- */
+        .profile-box { padding: 30px 15px; text-align: center; background: var(--white); }
+        .profile-input { padding: 8px; border: 1px solid #ddd; border-radius: 5px; width: 80%; text-align: center; margin: 10px 0; font-size: 16px; }
 
-        /* --- Bottom Nav --- */
-        .bottom-nav { position: fixed; bottom: 0; width: 100%; background: white; height: 55px; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #ddd; z-index: 1000; }
-        .nav-item { font-size: 24px; color: #65676b; cursor: pointer; }
-        .nav-active { color: #1877f2; }
+        /* --- Navigation --- */
+        .nav { position: fixed; bottom: 0; width: 100%; height: 55px; background: var(--white); border-top: 1px solid #ddd; display: flex; justify-content: space-around; align-items: center; }
+        .nav-item { font-size: 24px; color: var(--gray); cursor: pointer; padding: 10px; }
+        .nav-active { color: var(--primary); }
 
-        /* --- Private Chat Overlay --- */
-        #chatOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 2500; display: none; flex-direction: column; }
-        .chat-header { padding: 10px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; }
-        .chat-body { flex: 1; overflow-y: auto; padding: 15px; background: white; display: flex; flex-direction: column; gap: 5px; }
-        .chat-bubble { padding: 8px 12px; border-radius: 18px; max-width: 75%; font-size: 15px; }
-        .me { background: #0084ff; color: white; align-self: flex-end; }
-        .other { background: #f0f0f0; color: black; align-self: flex-start; }
+        /* Loading */
+        #loader { position: fixed; inset: 0; background: rgba(255,255,255,0.8); z-index: 3000; display: none; justify-content: center; align-items: center; }
+        .spinner { width: 30px; height: 30px; border: 3px solid #eee; border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-    <div id="loadingOverlay"><div class="spinner"></div></div>
-
+    <div id="loader"><div class="spinner"></div></div>
+    
     <div id="loginScreen">
-        <h1 style="color:#1877f2; font-size:40px; font-weight:bold; margin-bottom:20px;">facebook</h1>
-        <button class="login-btn" onclick="googleLogin()">Log In with Google</button>
+        <div class="logo">Social Lite</div>
+        <button class="btn btn-primary" onclick="doLogin()">Log In with Google</button>
     </div>
 
     <div id="appInterface">
         <div class="header">
-            <h1>facebook</h1>
-            <img id="myHeaderPic" src="" style="width:35px; height:35px; border-radius:50%;" onclick="switchTab('profile')">
+            <span>Social Lite</span>
+            <img id="myThumb" class="avatar" style="width:32px; height:32px;" onclick="switchTab('profile')">
         </div>
 
-        <div class="content-area">
-            
-            <div id="homeTab" class="tab-content active-tab">
-                <div class="create-post">
-                    <div class="cp-row">
-                        <img id="postAvatar" class="cp-avatar" src="">
-                        <input type="text" id="postInput" class="cp-input" placeholder="What's on your mind?">
+        <div class="content">
+            <div id="tab-home" class="tab-page active">
+                <div class="create-box">
+                    <div class="input-row">
+                        <img id="postThumb" class="avatar" style="width:40px; height:40px;">
+                        <input type="text" id="postText" class="post-input" placeholder="What's on your mind?">
                     </div>
                     <img id="previewImg" style="width:100%; border-radius:8px; display:none; margin-bottom:10px;">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <label for="postImg" style="color:#45bd62; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:5px;">
-                            🖼️ Photo
-                        </label>
-                        <input type="file" id="postImg" accept="image/*" style="display:none" onchange="previewFile()">
-                        <button class="post-btn" style="width:auto;" onclick="submitPost()">Post</button>
+                        <label for="postFile" style="color:#45bd62; font-weight:600; cursor:pointer; font-size:14px;">📷 Photo</label>
+                        <input type="file" id="postFile" accept="image/*" style="display:none" onchange="previewFile()">
+                        <button class="btn btn-primary" onclick="submitPost()">Post</button>
                     </div>
                 </div>
-                <div id="feedContainer"></div>
+                <div id="feed"></div>
             </div>
 
-            <div id="friendsTab" class="tab-content">
-                <div id="friendsList"></div>
+            <div id="tab-friends" class="tab-page">
+                <div id="friendList"></div>
             </div>
 
-            <div id="profileTab" class="tab-content">
-                <div class="profile-card">
-                    <img id="profileBigPic" src="" style="width:120px; height:120px; border-radius:50%; border:3px solid #1877f2; margin-bottom:15px;">
-                    <br>
-                    <label style="color:#1877f2; font-weight:bold; cursor:pointer;">
+            <div id="tab-profile" class="tab-page">
+                <div class="profile-box">
+                    <img id="bigProfile" class="avatar" style="width:100px; height:100px; border:3px solid var(--primary);">
+                    <br><br>
+                    <label style="color:var(--primary); font-weight:bold; cursor:pointer;">
                         Change Photo
-                        <input type="file" id="newProfileImg" accept="image/*" style="display:none" onchange="changeProfilePic()">
+                        <input type="file" id="newProfilePic" accept="image/*" style="display:none" onchange="updateProfilePic()">
                     </label>
                     <br><br>
-                    
-                    <div style="margin-bottom: 5px; color:#65676b; font-size:12px;">Display Name</div>
-                    <input type="text" id="editNameInput" class="edit-input">
+                    <input type="text" id="editName" class="profile-input">
                     <br>
-                    <button class="save-btn" onclick="saveName()">Save Name</button>
-                    
+                    <button class="btn btn-primary" onclick="updateName()">Save Name</button>
                     <br><br><br>
-                    <button onclick="auth.signOut()" style="background:#e4e6eb; border:none; padding:10px 20px; border-radius:6px; font-weight:bold;">Log Out</button>
+                    <button class="btn" style="background:#eee; color:red;" onclick="doLogout()">Log Out</button>
                 </div>
             </div>
-
         </div>
 
-        <div class="bottom-nav">
+        <div class="nav">
             <div class="nav-item nav-active" onclick="switchTab('home')">🏠</div>
             <div class="nav-item" onclick="switchTab('friends')">👥</div>
             <div class="nav-item" onclick="switchTab('profile')">👤</div>
@@ -179,65 +151,63 @@
     </div>
 
     <div id="commentModal">
-        <div class="cm-content">
-            <div class="cm-header">
-                <span>Comments</span>
-                <span onclick="closeComments()" style="cursor:pointer; font-size:20px;">✕</span>
-            </div>
+        <div class="cm-box">
+            <div class="cm-head">Comments <span onclick="closeComments()" style="cursor:pointer">✕</span></div>
             <div class="cm-list" id="commentList"></div>
-            <div class="cm-input-area">
-                <input type="text" id="commentInput" class="cm-input" placeholder="Write a comment...">
-                <button onclick="submitComment()" style="border:none; background:none; color:#1877f2; font-weight:bold;">➤</button>
+            <div class="cm-input-box">
+                <input type="text" id="cmtInput" class="post-input" placeholder="Write a comment...">
+                <button class="btn btn-text" onclick="postComment()" style="color:var(--primary)">➤</button>
             </div>
         </div>
     </div>
 
-    <div id="chatOverlay">
-        <div class="chat-header">
-            <button onclick="closeChat()" style="border:none; background:none; font-size:24px;">←</button>
-            <span id="chatPartnerName" style="font-weight:bold;">User</span>
+    <div id="chatScreen">
+        <div class="chat-head">
+            <span onclick="closeChat()" style="font-size:24px; cursor:pointer; padding-right:10px;">←</span>
+            <img id="chatUserPic" class="avatar" style="width:32px; height:32px;">
+            <span id="chatUserName">User</span>
         </div>
-        <div class="chat-body" id="chatBody"></div>
-        <div style="padding:10px; display:flex; gap:10px; border-top:1px solid #eee;">
-            <input type="text" id="chatInput" style="flex:1; padding:10px; border-radius:20px; border:1px solid #ddd;" placeholder="Message...">
-            <button onclick="sendChat()" style="border:none; background:none; font-size:24px; color:#1877f2;">➤</button>
+        <div class="chat-body" id="msgList"></div>
+        <div class="chat-foot">
+            <input type="text" id="msgInput" class="post-input" placeholder="Message...">
+            <button class="btn btn-text" onclick="sendMsg()" style="color:var(--primary); font-size:20px;">➤</button>
         </div>
     </div>
 
 <script>
-    // ------------------------------------------------
-    // ⚠️ CONFIGURATION (Replace with yours)
-    // ------------------------------------------------
+    // --- 1. CONFIGURATION ---
     const firebaseConfig = {
-  apiKey: "AIzaSyCUteIjOOPxPYrCutDSo9t0cVtLqnGTWxU",
-  authDomain: "chat-27f21.firebaseapp.com",
-  projectId: "chat-27f21",
-  storageBucket: "chat-27f21.firebasestorage.app",
-  messagingSenderId: "582814616396",
-  appId: "1:582814616396:web:251660e2a50635bc70dde9"
-};
+      apiKey: "AIzaSyCUteIjOOPxPYrCutDSo9t0cVtLqnGTWxU",
+      authDomain: "chat-27f21.firebaseapp.com",
+      projectId: "chat-27f21",
+      storageBucket: "chat-27f21.firebasestorage.app",
+      messagingSenderId: "582814616396",
+      appId: "1:582814616396:web:251660e2a50635bc70dde9"
+    };
     const ADMIN_EMAIL = "mmtintaungkhaing@gmail.com"; 
-    // ------------------------------------------------
 
+    // --- 2. INIT FIREBASE ---
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
-    
+
+    // State Variables
     let currentUser = null;
     let myData = {};
-    let currentPostIdForComments = null;
-    let currentChatId = null;
+    let activeChatID = null;
+    let activePostID = null;
+    let commentUnsub = null; // To stop listening when modal closes
+    let chatUnsub = null;    // To stop listening when chat closes
 
-    // Auth & Init
+    // --- 3. AUTH & USER DATA ---
     auth.onAuthStateChanged(user => {
         if (user) {
             currentUser = user;
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('appInterface').style.display = 'flex';
             
-            // User Data Setup
-            const docRef = db.collection('users').doc(user.uid);
-            docRef.onSnapshot(doc => {
+            // Realtime User Data
+            db.collection('users').doc(user.uid).onSnapshot(doc => {
                 if (doc.exists) {
                     myData = doc.data();
                 } else {
@@ -248,268 +218,226 @@
                         uid: user.uid,
                         isAdmin: (user.email === ADMIN_EMAIL)
                     };
-                    docRef.set(myData);
+                    doc.ref.set(myData);
                 }
                 updateUI();
+                loadFeed();
                 loadFriends();
             });
-            loadFeed();
         } else {
             document.getElementById('loginScreen').style.display = 'flex';
             document.getElementById('appInterface').style.display = 'none';
         }
     });
 
-    function googleLogin() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
-    function updateUI() {
-        document.getElementById('myHeaderPic').src = myData.photo;
-        document.getElementById('postAvatar').src = myData.photo;
-        document.getElementById('profileBigPic').src = myData.photo;
-        document.getElementById('editNameInput').value = myData.name;
-    }
+    const doLogin = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+    const doLogout = () => auth.signOut();
+    const updateUI = () => {
+        const els = ['myThumb', 'postThumb', 'bigProfile'];
+        els.forEach(id => document.getElementById(id).src = myData.photo);
+        document.getElementById('editName').value = myData.name;
+    };
 
-    // --- Tab Logic ---
-    function switchTab(tab) {
-        document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+    // --- 4. NAVIGATION ---
+    window.switchTab = (tab) => {
+        document.querySelectorAll('.tab-page').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('nav-active'));
         
-        if (tab === 'home') {
-            document.getElementById('homeTab').style.display = 'block';
-            document.querySelectorAll('.nav-item')[0].classList.add('nav-active');
-        } else if (tab === 'friends') {
-            document.getElementById('friendsTab').style.display = 'block';
-            document.querySelectorAll('.nav-item')[1].classList.add('nav-active');
-        } else {
-            document.getElementById('profileTab').style.display = 'block';
-            document.querySelectorAll('.nav-item')[2].classList.add('nav-active');
+        document.getElementById('tab-'+tab).classList.add('active');
+        // Simple index mapping for nav highlights
+        const idx = tab==='home'?0 : tab==='friends'?1 : 2;
+        document.querySelectorAll('.nav-item')[idx].classList.add('nav-active');
+    };
+
+    // --- 5. FEED & POSTS ---
+    const previewFile = () => {
+        const file = document.getElementById('postFile').files[0];
+        if(file) {
+            const r = new FileReader();
+            r.onload = e => { document.getElementById('previewImg').src = e.target.result; document.getElementById('previewImg').style.display = 'block'; }
+            r.readAsDataURL(file);
         }
-    }
+    };
 
-    // --- Profile & Name Edit ---
-    function saveName() {
-        const newName = document.getElementById('editNameInput').value;
-        if (newName) {
-            db.collection('users').doc(currentUser.uid).update({ name: newName }).then(() => alert("Name Updated!"));
-        }
-    }
-    function changeProfilePic() {
-        const file = document.getElementById('newProfileImg').files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = e => {
-                db.collection('users').doc(currentUser.uid).update({ photo: e.target.result });
-            };
-            reader.readAsDataURL(file);
-        }
-    }
+    const submitPost = async () => {
+        const text = document.getElementById('postText').value;
+        const imgParams = document.getElementById('previewImg').style.display === 'block' ? document.getElementById('previewImg').src : null;
+        
+        if(!text && !imgParams) return;
+        
+        document.getElementById('loader').style.display = 'flex';
+        await db.collection('posts').add({
+            text: text,
+            image: imgParams,
+            uid: currentUser.uid,
+            author: myData.name,
+            face: myData.photo,
+            time: firebase.firestore.FieldValue.serverTimestamp(),
+            likes: [],
+            isAdmin: myData.isAdmin || false
+        });
+        
+        document.getElementById('loader').style.display = 'none';
+        document.getElementById('postText').value = "";
+        document.getElementById('previewImg').style.display = 'none';
+        document.getElementById('postFile').value = "";
+    };
 
-    // --- Feed & Interaction ---
-    function previewFile() {
-        const file = document.getElementById('postImg').files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = e => {
-                document.getElementById('previewImg').src = e.target.result;
-                document.getElementById('previewImg').style.display = 'block';
-            };
-            reader.readAsDataURL(file);
-        }
-    }
-
-    function submitPost() {
-        const text = document.getElementById('postInput').value;
-        const img = document.getElementById('previewImg').src;
-        const file = document.getElementById('postImg').files[0];
-
-        if (!text && !file) return;
-        document.getElementById('loadingOverlay').style.display = 'flex';
-
-        const save = (image) => {
-            db.collection('posts').add({
-                text: text,
-                image: image,
-                uid: currentUser.uid,
-                authorName: myData.name,
-                authorPhoto: myData.photo,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                likes: [], // Array for likes
-                isAdmin: myData.isAdmin || false
-            }).then(() => {
-                document.getElementById('loadingOverlay').style.display = 'none';
-                document.getElementById('postInput').value = "";
-                document.getElementById('previewImg').style.display = 'none';
-                document.getElementById('postImg').value = "";
-            });
-        }
-
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = e => save(e.target.result);
-            reader.readAsDataURL(file);
-        } else {
-            save(null);
-        }
-    }
-
-    function loadFeed() {
-        db.collection('posts').orderBy('timestamp', 'desc').onSnapshot(snap => {
-            const container = document.getElementById('feedContainer');
-            container.innerHTML = "";
+    const loadFeed = () => {
+        db.collection('posts').orderBy('time', 'desc').onSnapshot(snap => {
+            const div = document.getElementById('feed');
+            div.innerHTML = "";
             snap.forEach(doc => {
                 const p = doc.data();
-                const pid = doc.id;
                 const isLiked = p.likes && p.likes.includes(currentUser.uid);
-                const likeCount = p.likes ? p.likes.length : 0;
-                
-                // Admin Badge
-                const badge = p.isAdmin ? `<span style="color:#1877f2; margin-left:4px;">✓</span>` : ``;
-                
-                // Delete Button (Only for owner or admin)
-                let delBtn = "";
-                if (currentUser.uid === p.uid || myData.isAdmin) {
-                    delBtn = `<span class="delete-btn" onclick="deletePost('${pid}')">🗑️</span>`;
-                }
+                const badge = p.isAdmin ? `<span style="color:var(--primary);margin-left:4px">✓</span>` : ``;
+                const del = (currentUser.uid === p.uid || myData.isAdmin) ? `<span onclick="delPost('${doc.id}')" style="color:red; cursor:pointer;">🗑</span>` : "";
 
-                const html = `
+                div.innerHTML += `
                     <div class="post-card">
-                        <div class="pc-header">
-                            <div class="pc-user" onclick="startChat('${p.uid}', '${p.authorName}')">
-                                <img src="${p.authorPhoto}" class="pc-avatar">
-                                <div class="pc-info">
-                                    <h4>${p.authorName} ${badge}</h4>
-                                    <span>${p.timestamp ? new Date(p.timestamp.toDate()).toLocaleString() : ''}</span>
-                                </div>
+                        <div class="pc-head">
+                            <div class="pc-user" onclick="startChat('${p.uid}', '${p.author}', '${p.face}')">
+                                <img src="${p.face}" class="avatar" style="width:40px; height:40px;">
+                                <div class="pc-meta"><h4>${p.author} ${badge}</h4><span>${p.time?new Date(p.time.toDate()).toLocaleTimeString():''}</span></div>
                             </div>
-                            ${delBtn}
+                            ${del}
                         </div>
-                        <div class="pc-content">
-                            <p>${p.text || ''}</p>
-                            ${p.image ? `<img src="${p.image}" class="pc-image">` : ''}
-                        </div>
-                        <div class="pc-stats">
-                            <span>${likeCount > 0 ? '♥ ' + likeCount : ''}</span>
-                            <span onclick="openComments('${pid}')">Comments</span>
+                        <div class="pc-body">
+                            <p>${p.text||""}</p>
+                            ${p.image ? `<img src="${p.image}" class="pc-img">` : ""}
                         </div>
                         <div class="pc-actions">
-                            <button class="action-btn ${isLiked ? 'liked' : ''}" onclick="toggleLike('${pid}', ${isLiked})">
-                                <span>${isLiked ? '♥ Liked' : '♡ Like'}</span>
-                            </button>
-                            <button class="action-btn" onclick="openComments('${pid}')">
-                                <span>💬 Comment</span>
-                            </button>
+                            <div class="act-btn ${isLiked?'liked':''}" onclick="likePost('${doc.id}', ${isLiked})">
+                                ${isLiked ? '♥ Liked' : '♡ Like'} (${p.likes?p.likes.length:0})
+                            </div>
+                            <div class="act-btn" onclick="openComments('${doc.id}')">💬 Comment</div>
                         </div>
                     </div>
                 `;
-                container.innerHTML += html;
             });
         });
-    }
+    };
 
-    function deletePost(id) {
-        if(confirm("Delete this post?")) db.collection('posts').doc(id).delete();
-    }
+    const delPost = (id) => confirm("Delete?") && db.collection('posts').doc(id).delete();
+    const likePost = (id, loved) => {
+        db.collection('posts').doc(id).update({
+            likes: loved ? firebase.firestore.FieldValue.arrayRemove(currentUser.uid) : firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
+        });
+    };
 
-    // --- Like System ---
-    function toggleLike(pid, isLiked) {
-        const ref = db.collection('posts').doc(pid);
-        if (isLiked) {
-            ref.update({ likes: firebase.firestore.FieldValue.arrayRemove(currentUser.uid) });
-        } else {
-            ref.update({ likes: firebase.firestore.FieldValue.arrayUnion(currentUser.uid) });
-        }
-    }
-
-    // --- Comment System ---
-    function openComments(pid) {
-        currentPostIdForComments = pid;
+    // --- 6. COMMENTS (FIXED) ---
+    const openComments = (pid) => {
+        activePostID = pid;
         document.getElementById('commentModal').style.display = 'flex';
-        
-        // Load Comments
-        db.collection('comments').where('postId', '==', pid).orderBy('timestamp', 'asc').onSnapshot(snap => {
-            const list = document.getElementById('commentList');
-            list.innerHTML = "";
+        // Real-time listener for comments
+        commentUnsub = db.collection('comments').where('pid', '==', pid).orderBy('time', 'asc').onSnapshot(snap => {
+            const div = document.getElementById('commentList');
+            div.innerHTML = "";
             snap.forEach(doc => {
                 const c = doc.data();
-                list.innerHTML += `
-                    <div class="comment-row">
-                        <img src="${c.userPhoto}" class="cmt-avatar">
-                        <div class="cmt-bubble">
-                            <span class="cmt-name">${c.userName}</span>
-                            <span class="cmt-text">${c.text}</span>
+                div.innerHTML += `
+                    <div class="cm-item">
+                        <img src="${c.face}" class="avatar" style="width:30px; height:30px;">
+                        <div class="cm-bubble">
+                            <div style="font-weight:bold; font-size:13px">${c.author}</div>
+                            <div>${c.text}</div>
                         </div>
                     </div>
                 `;
             });
+            div.scrollTop = div.scrollHeight;
         });
-    }
-    
-    function closeComments() { document.getElementById('commentModal').style.display = 'none'; }
+    };
 
-    function submitComment() {
-        const txt = document.getElementById('commentInput').value;
-        if (!txt || !currentPostIdForComments) return;
-        
+    const closeComments = () => {
+        document.getElementById('commentModal').style.display = 'none';
+        if(commentUnsub) commentUnsub(); // Stop listening
+    };
+
+    const postComment = () => {
+        const txt = document.getElementById('cmtInput').value;
+        if(!txt) return;
         db.collection('comments').add({
-            postId: currentPostIdForComments,
-            text: txt,
-            uid: currentUser.uid,
-            userName: myData.name,
-            userPhoto: myData.photo,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            pid: activePostID, text: txt, uid: currentUser.uid,
+            author: myData.name, face: myData.photo,
+            time: firebase.firestore.FieldValue.serverTimestamp()
         });
-        document.getElementById('commentInput').value = "";
-    }
+        document.getElementById('cmtInput').value = "";
+    };
 
-    // --- Friend & Chat System ---
-    function loadFriends() {
+    // --- 7. CHAT (FIXED) ---
+    const loadFriends = () => {
         db.collection('users').onSnapshot(snap => {
-            const list = document.getElementById('friendsList');
-            list.innerHTML = "";
+            const div = document.getElementById('friendList');
+            div.innerHTML = "";
             snap.forEach(doc => {
                 const u = doc.data();
-                if (u.uid !== currentUser.uid) {
-                    list.innerHTML += `
-                        <div class="friend-row" onclick="startChat('${u.uid}', '${u.name}')">
-                            <img src="${u.photo}" style="width:40px; height:40px; border-radius:50%;">
-                            <span style="font-weight:bold; flex:1;">${u.name}</span>
-                            <span>💬</span>
+                if(u.uid !== currentUser.uid) {
+                    div.innerHTML += `
+                        <div class="friend-row" onclick="startChat('${u.uid}', '${u.name}', '${u.photo}')">
+                            <img src="${u.photo}" class="avatar" style="width:40px; height:40px;">
+                            <span style="font-weight:600; font-size:15px; flex:1">${u.name}</span>
+                            <span style="color:var(--primary)">💬</span>
                         </div>
                     `;
                 }
             });
         });
-    }
+    };
 
-    function startChat(uid, name) {
+    const startChat = (uid, name, pic) => {
+        // Create Unique Chat ID
         const ids = [currentUser.uid, uid].sort();
-        currentChatId = ids.join("_");
-        document.getElementById('chatPartnerName').innerText = name;
-        document.getElementById('chatOverlay').style.display = 'flex';
+        activeChatID = ids.join("_");
         
-        db.collection('messages').where('chatId', '==', currentChatId).orderBy('timestamp', 'asc').onSnapshot(snap => {
-            const body = document.getElementById('chatBody');
-            body.innerHTML = "";
+        document.getElementById('chatUserName').innerText = name;
+        document.getElementById('chatUserPic').src = pic;
+        document.getElementById('chatScreen').style.display = 'flex';
+
+        chatUnsub = db.collection('messages').where('chatID', '==', activeChatID).orderBy('time', 'asc').onSnapshot(snap => {
+            const div = document.getElementById('msgList');
+            div.innerHTML = "";
             snap.forEach(doc => {
                 const m = doc.data();
-                const cls = m.sender === currentUser.uid ? 'me' : 'other';
-                body.innerHTML += `<div class="chat-bubble ${cls}">${m.text}</div>`;
+                const type = m.uid === currentUser.uid ? 'msg-me' : 'msg-other';
+                div.innerHTML += `<div class="msg ${type}">${m.text}</div>`;
             });
-            body.scrollTop = body.scrollHeight;
+            div.scrollTop = div.scrollHeight;
         });
-    }
+    };
 
-    function closeChat() { document.getElementById('chatOverlay').style.display = 'none'; }
-    function sendChat() {
-        const txt = document.getElementById('chatInput').value;
-        if (!txt) return;
+    const closeChat = () => {
+        document.getElementById('chatScreen').style.display = 'none';
+        if(chatUnsub) chatUnsub();
+    };
+
+    const sendMsg = () => {
+        const txt = document.getElementById('msgInput').value;
+        if(!txt) return;
         db.collection('messages').add({
-            chatId: currentChatId,
-            text: txt,
-            sender: currentUser.uid,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            chatID: activeChatID, text: txt, uid: currentUser.uid,
+            time: firebase.firestore.FieldValue.serverTimestamp()
         });
-        document.getElementById('chatInput').value = "";
-    }
+        document.getElementById('msgInput').value = "";
+    };
+
+    // --- 8. PROFILE ---
+    const updateName = () => {
+        db.collection('users').doc(currentUser.uid).update({ name: document.getElementById('editName').value })
+        .then(() => alert("Name Updated"));
+    };
+    const updateProfilePic = () => {
+        const file = document.getElementById('newProfilePic').files[0];
+        if(!file) return;
+        if(file.size > 1024 * 1024) return alert("File too big! Max 1MB"); // 1MB Limit
+        
+        const r = new FileReader();
+        r.onload = e => {
+            db.collection('users').doc(currentUser.uid).update({ photo: e.target.result })
+            .then(() => alert("Photo Updated"));
+        };
+        r.readAsDataURL(file);
+    };
 
 </script>
 </body>
