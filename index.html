@@ -363,7 +363,7 @@
             </button>
         </div>
     </div>
-
+    
 <script>
     // ⚠️ CONFIGURATION (Replace with yours)
     const firebaseConfig = {
@@ -457,8 +457,8 @@
             // UI Updates
             document.getElementById('loggedInCreateBox').style.display = 'block';
             document.getElementById('guestFeedBanner').style.display = 'none';
-            document.getElementById('profile-guest-view').style.display = 'none'; // Hide Guest Card
-            document.getElementById('profile-user-view').style.display = 'block'; // Show Profile
+            document.getElementById('profile-guest-view').style.display = 'none'; 
+            document.getElementById('profile-user-view').style.display = 'block'; 
 
             // Load User Data
             db.collection('users').doc(user.uid).onSnapshot(doc => {
@@ -483,16 +483,17 @@
             // UI Updates
             document.getElementById('loggedInCreateBox').style.display = 'none';
             document.getElementById('guestFeedBanner').style.display = 'block';
-            // FIXED: DISPLAY FLEX to center the card
             document.getElementById('profile-guest-view').style.display = 'flex'; 
             document.getElementById('profile-user-view').style.display = 'none';
             
-            // Header Thumb Placeholder
-            document.getElementById('myHeaderThumb').src = "https://via.placeholder.com/100?text=Guest";
+            // ✅ CHANGED: Use a nice Logo/Icon instead of "via.placeholder"
+            // Using UI Avatars with 'S' (Social69) + Brand Color
+            document.getElementById('myHeaderThumb').src = "https://social69.netlify.app/logo.png";
+            
             document.getElementById('friendList').innerHTML = "<div style='text-align:center; padding:20px; color:var(--text-gray);'>Please login to see friends.</div>";
         }
         
-        // Load feed regardless of auth state (Guest can see posts)
+        // Load feed regardless of auth state
         loadFeed();
     });
 
@@ -809,5 +810,6 @@
     };
 
 </script>
+
 </body>
 </html>
