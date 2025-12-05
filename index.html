@@ -84,8 +84,16 @@
         }
         .header-title { font-size: 20px; font-weight: 800; color: var(--primary); }
 
-        .content-wrapper { flex: 1; overflow-y: auto; padding-bottom: 90px; position: relative; scroll-behavior: smooth; }
-        .tab-page { display: none; padding: 15px; animation: fadeIn 0.3s ease; height: 100%; }
+        /* 🔥 Scrollable Content Wrapper */
+        .content-wrapper { 
+            flex: 1; 
+            overflow-y: auto; 
+            padding-bottom: 120px; /* Extra padding for scrolling */
+            position: relative; 
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
+        }
+        .tab-page { display: none; padding: 15px; animation: fadeIn 0.3s ease; min-height: 100%; }
         .active-tab { display: block; }
 
         /* --- Post Create --- */
@@ -256,14 +264,14 @@
         .input-group label { display: block; font-size: 12px; font-weight: 700; color: var(--text-gray); margin-bottom: 5px; margin-left: 5px; }
         .input-group { margin-bottom: 10px; }
 
-        /* 🔥 Logout Button */
-        .logout-btn {
-            background: transparent; color: #ff4d4f; border: 2px solid rgba(255, 77, 79, 0.2);
-            width: 100%; padding: 12px; border-radius: 15px; font-weight: 700;
-            display: flex; align-items: center; justify-content: center; gap: 10px;
-            cursor: pointer; transition: 0.2s;
+        /* 🔥 New Position for Logout Button */
+        .logout-btn-simple {
+            background: transparent; color: #ff4d4f; border: 1px solid rgba(255, 77, 79, 0.2);
+            padding: 8px 15px; border-radius: 12px; font-weight: 600; font-size: 13px;
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            cursor: pointer; transition: 0.2s; margin: 0 auto 15px;
         }
-        .logout-btn:active { background: rgba(255, 77, 79, 0.1); transform: scale(0.98); }
+        .logout-btn-simple:active { background: rgba(255, 77, 79, 0.1); transform: scale(0.98); }
 
         #toastBox {
             position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
@@ -411,6 +419,10 @@
                         <div style="color:var(--text-gray); font-size:14px; margin-bottom:10px;">
                             Tap the top-right avatar to edit profile
                         </div>
+                        
+                        <button class="logout-btn-simple" onclick="auth.signOut()">
+                            <i class="ph-bold ph-sign-out"></i> Log Out
+                        </button>
                     </div>
 
                     <h3 style="margin-bottom:15px;">About</h3>
@@ -445,10 +457,7 @@
                         </div>
                     </div>
                     
-                    <button class="logout-btn" onclick="auth.signOut()">
-                        <i class="ph-bold ph-sign-out"></i> Log Out
-                    </button>
-                </div>
+                    <div style="height:50px;"></div> </div>
 
             </div>
 
