@@ -80,8 +80,9 @@
 
         /* --- Post Create --- */
         .create-box { background: var(--bg-card); border-radius: var(--border-radius); padding: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.03); margin-bottom: 20px; }
-        .input-row { display: flex; gap: 12px; align-items: center; margin-bottom: 15px; }
-        .post-input { flex: 1; background: #F8F9FB; border: none; padding: 12px 15px; border-radius: 12px; font-size: 15px; color: var(--text-main); transition: 0.2s; }
+        .input-row { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 15px; }
+        /* CHANGED: Textarea for multiline */
+        .post-input { flex: 1; background: #F8F9FB; border: none; padding: 12px 15px; border-radius: 12px; font-size: 15px; color: var(--text-main); transition: 0.2s; resize: none; font-family: inherit; }
         .post-input:focus { background: #fff; box-shadow: inset 0 0 0 2px var(--primary-light); }
         .action-row { display: flex; justify-content: space-between; align-items: center; }
         .photo-trigger { color: var(--primary); font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 5px 10px; border-radius: 8px; background: rgba(108, 93, 211, 0.1); }
@@ -93,7 +94,8 @@
         .pc-name { font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 4px; }
         .admin-badge { color: var(--primary); font-size: 14px; }
         .pc-time { font-size: 11px; color: var(--text-gray); margin-top: 2px; }
-        .pc-text { font-size: 15px; line-height: 1.5; margin-bottom: 10px; color: #444; word-wrap: break-word; }
+        /* CHANGED: pre-wrap for multiline display */
+        .pc-text { font-size: 15px; line-height: 1.5; margin-bottom: 10px; color: #444; word-wrap: break-word; white-space: pre-wrap; }
         .pc-text a { color: var(--primary); text-decoration: none; font-weight: 500; }
         .pc-text a:hover { text-decoration: underline; }
         .pc-img { width: 100%; border-radius: 12px; margin-top: 10px; max-height: 400px; object-fit: cover; }
@@ -125,7 +127,7 @@
         .os-body { flex: 1; overflow-y: auto; padding: 20px; background: var(--bg-body); display: flex; flex-direction: column; gap: 10px; }
         .os-input { padding: 15px; background: white; border-top: 1px solid #f0f0f0; display: flex; gap: 10px; }
         
-        .bubble { padding: 10px 15px; border-radius: 15px; max-width: 80%; font-size: 15px; position: relative; word-wrap: break-word; }
+        .bubble { padding: 10px 15px; border-radius: 15px; max-width: 80%; font-size: 15px; position: relative; word-wrap: break-word; white-space: pre-wrap; }
         .bubble-me { background: var(--primary); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
         .bubble-other { background: white; color: var(--text-main); align-self: flex-start; border-bottom-left-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
 
@@ -170,7 +172,7 @@
                 <div class="create-box">
                     <div class="input-row">
                         <img id="postThumb" class="avatar" style="width:40px; height:40px;">
-                        <input type="text" id="postInput" class="post-input" placeholder="What's happening?">
+                        <textarea id="postInput" class="post-input" placeholder="What's happening?" rows="3"></textarea>
                     </div>
                     <img id="previewImg" style="width:100%; border-radius:12px; display:none; margin-bottom:15px;">
                     <div class="action-row">
@@ -268,7 +270,6 @@
     // --- HELPER: Make Links Clickable ---
     const makeLinksClickable = (text) => {
         if (!text) return '';
-        // Regex to find URLs (starts with http:// or https://)
         const urlRegex = /(https?:\/\/[^\s]+)/g;
         return text.replace(urlRegex, (url) => {
             return `<a href="${url}" target="_blank">${url}</a>`;
@@ -371,10 +372,44 @@
         document.getElementById('previewImg').src = "";
     };
 
+    // NEW FUNCTION: Edit Post
+    window.editPost = (id) => {
+        // Get current text from the UI to show in prompt
+        const currentTextEl = document.getElementById(`text-${id}`);
+        const currentText = currentTextEl ? currentTextEl.innerText : "";
+        
+        const newText = prompt("Edit your post:", currentText);
+        
+        if (newText !== null && newText !== currentText) {
+            db.collection('posts').doc(id).update({ 
+                text: newText 
+            }).then(() => alert("Post updated!"));
+        }
+    };
+
+    // NEW FUNCTION: Share Post
+    window.sharePost = async (text) => {
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: 'Social Hub Post',
+                    text: text,
+                    url: window.location.href
+                });
+            } catch (err) {
+                console.log('Error sharing:', err);
+            }
+        } else {
+            // Fallback to clipboard
+            navigator.clipboard.writeText(text).then(() => {
+                alert("Post text copied to clipboard!");
+            });
+        }
+    };
+
     const loadFeed = () => {
         if(feedUnsubscribe) feedUnsubscribe(); 
 
-        // Removed .limit(50) to show ALL existing data as requested
         feedUnsubscribe = db.collection('posts')
             .orderBy('timestamp', 'desc')
             .onSnapshot(snap => {
@@ -386,7 +421,12 @@
                     const isLiked = p.likes && p.likes.includes(currentUser.uid);
                     const likeIcon = isLiked ? 'ph-fill ph-heart' : 'ph ph-heart';
                     const adminIcon = p.isAdmin ? `<i class="ph-fill ph-seal-check admin-badge"></i>` : '';
-                    const delBtn = (currentUser.uid === p.uid || myData.isAdmin) ? `<i class="ph ph-trash" onclick="deletePost('${p.id}')" style="color:#ff4d4f;cursor:pointer;"></i>` : '';
+                    
+                    // Buttons Logic
+                    const isOwner = currentUser.uid === p.uid || myData.isAdmin;
+                    const delBtn = isOwner ? `<i class="ph ph-trash" onclick="deletePost('${p.id}')" style="color:#ff4d4f;cursor:pointer;"></i>` : '';
+                    // ADDED: Edit Button
+                    const editBtn = isOwner ? `<i class="ph ph-pencil-simple" onclick="editPost('${p.id}')" style="color:#6C5DD3;cursor:pointer;margin-right:10px;"></i>` : '';
                     
                     let timeDisplay = "Just now";
                     if(p.timestamp) {
@@ -395,9 +435,9 @@
                     }
 
                     const commentCount = p.commentCount ? p.commentCount : 0;
-                    
-                    // Apply link clickable function here
                     const displayText = makeLinksClickable(p.text || '');
+                    // Safe plain text for sharing (remove HTML tags)
+                    const plainText = (p.text || '').replace(/"/g, '&quot;');
 
                     container.innerHTML += `
                         <div class="post-card">
@@ -409,9 +449,12 @@
                                         <div class="pc-time">${timeDisplay}</div>
                                     </div>
                                 </div>
-                                ${delBtn}
+                                <div>
+                                    ${editBtn}
+                                    ${delBtn}
+                                </div>
                             </div>
-                            <div class="pc-text">${displayText}</div>
+                            <div class="pc-text" id="text-${p.id}">${displayText}</div>
                             ${p.image ? `<img src="${p.image}" class="pc-img">` : ''}
                             
                             <div class="pc-stats">
@@ -424,6 +467,9 @@
                                 </div>
                                 <div class="pc-btn" onclick="openOverlay('comment', '${p.id}')">
                                     <i class="ph ph-chat-circle" style="font-size:20px;"></i> Comment
+                                </div>
+                                <div class="pc-btn" onclick="sharePost('${plainText}')">
+                                    <i class="ph ph-share-network" style="font-size:20px;"></i> Share
                                 </div>
                             </div>
                         </div>
@@ -471,13 +517,12 @@
                 body.scrollTop = body.scrollHeight;
             });
         } else {
-            // CHAT - FIX FOR LOADING STUCK
+            // CHAT
             title.innerText = name;
             const ids = [currentUser.uid, targetId].sort();
             const chatId = ids.join("_");
             activeTargetId = chatId; 
 
-            // REMOVED .orderBy HERE to prevent Index Error
             unsubOverlay = db.collection('messages')
                 .where('chatId', '==', chatId)
                 .onSnapshot(snap => {
