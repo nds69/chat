@@ -91,7 +91,7 @@
             padding-bottom: 120px; /* Extra padding for scrolling */
             position: relative; 
             scroll-behavior: smooth;
-            -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
+            -webkit-overflow-scrolling: touch; 
         }
         .tab-page { display: none; padding: 15px; animation: fadeIn 0.3s ease; min-height: 100%; }
         .active-tab { display: block; }
@@ -113,7 +113,17 @@
         .pc-time { font-size: 11px; color: var(--text-gray); margin-top: 2px; }
         .pc-text { font-size: 15px; line-height: 1.5; margin-bottom: 10px; color: var(--text-main); word-wrap: break-word; white-space: pre-wrap; }
         .pc-text a { color: var(--primary); text-decoration: none; font-weight: 500; }
-        .pc-img { width: 100%; border-radius: 12px; margin-top: 10px; max-height: 400px; object-fit: cover; }
+        
+        /* 🔥 FIX: Image Sizing */
+        .pc-img { 
+            width: 100%; 
+            height: auto;
+            max-height: 400px; /* Limit height */
+            border-radius: 12px; 
+            margin-top: 10px; 
+            object-fit: contain; /* Shows full image without cropping/stretching */
+            background-color: rgba(0,0,0,0.03); /* Slight tint for placeholders */
+        }
         
         .pc-stats { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-gray); margin: 15px 0 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border-color); }
         .pc-actions { display: flex; justify-content: space-between; }
@@ -325,13 +335,13 @@
                 <input type="text" id="modalEditName" class="post-input" placeholder="e.g. John Doe">
             </div>
 
-            <div class="input-group">
-                <label>Bio</label>
+            <div class="input-group" id="bioInputGroup" style="display:none;">
+                <label>Bio (Admin Only)</label>
                 <input type="text" id="modalEditBio" class="post-input" placeholder="Short description...">
             </div>
 
-            <div class="input-group">
-                <label>Website</label>
+            <div class="input-group" id="webInputGroup" style="display:none;">
+                <label>Website (Admin Only)</label>
                 <input type="text" id="modalEditWebsite" class="post-input" placeholder="https://example.com">
             </div>
 
@@ -357,7 +367,7 @@
                         <img id="postThumb" class="avatar" style="width:40px; height:40px;">
                         <textarea id="postInput" class="post-input" placeholder="What's happening?" rows="3"></textarea>
                     </div>
-                    <img id="previewImg" style="width:100%; border-radius:12px; display:none; margin-bottom:15px;">
+                    <img id="previewImg" class="pc-img" style="display:none; margin-bottom:15px;">
                     <div class="action-row">
                         <label for="postFile" class="photo-trigger">
                             <i class="ph ph-image"></i> Photo
@@ -416,13 +426,14 @@
                     <div class="profile-header">
                         <img id="profilePic" class="avatar" style="width:100px; height:100px; border:4px solid var(--bg-body);">
                         <h2 id="profileNameDisplay" style="margin:15px 0 5px;">User Name</h2>
-                        <div style="color:var(--text-gray); font-size:14px; margin-bottom:10px;">
-                            Tap the top-right avatar to edit profile
-                        </div>
                         
                         <button class="logout-btn-simple" onclick="auth.signOut()">
                             <i class="ph-bold ph-sign-out"></i> Log Out
                         </button>
+                        
+                        <div style="color:var(--text-gray); font-size:14px; margin-bottom:10px;">
+                            Tap the top-right avatar to edit profile
+                        </div>
                     </div>
 
                     <h3 style="margin-bottom:15px;">About</h3>
@@ -766,10 +777,6 @@
                     const likeIcon = isLiked ? 'ph-fill ph-heart' : 'ph ph-heart';
                     const adminIcon = p.isAdmin ? `<i class="ph-fill ph-seal-check admin-badge"></i>` : '';
                     
-                    const isOwner = currentUser && (currentUser.uid === p.uid || myData.isAdmin);
-                    const delBtn = isOwner ? `<i class="ph ph-trash" onclick="deletePost('${p.id}')" style="color:#ff4d4f;cursor:pointer;"></i>` : '';
-                    const editBtn = isOwner ? `<i class="ph ph-pencil-simple" onclick="openEditModal('${p.id}')" style="color:#6C5DD3;cursor:pointer;margin-right:10px;"></i>` : '';
-                    
                     let timeDisplay = "Just now";
                     if(p.timestamp) {
                         const date = p.timestamp.toDate();
@@ -1064,6 +1071,12 @@
         document.getElementById('modalEditName').value = myData.name;
         document.getElementById('modalEditBio').value = myData.bio || "";
         document.getElementById('modalEditWebsite').value = myData.website || "";
+        
+        // 🔥 Hide Bio/Website inputs if NOT Admin
+        const displayStyle = myData.isAdmin ? 'block' : 'none';
+        document.getElementById('bioInputGroup').style.display = displayStyle;
+        document.getElementById('webInputGroup').style.display = displayStyle;
+
         document.getElementById('profileEditModal').style.display = 'flex';
     };
 
@@ -1083,13 +1096,17 @@
 
     window.saveProfileChanges = () => {
         const newName = document.getElementById('modalEditName').value.trim();
-        const newBio = document.getElementById('modalEditBio').value.trim();
-        const newWebsite = document.getElementById('modalEditWebsite').value.trim();
         const newPhotoSrc = document.getElementById('modalProfileThumb').src;
         
         if(!newName) return showToast("Name cannot be empty");
 
-        const updateData = { name: newName, bio: newBio, website: newWebsite };
+        const updateData = { name: newName };
+        
+        // Only update bio/website if Admin
+        if (myData.isAdmin) {
+            updateData.bio = document.getElementById('modalEditBio').value.trim();
+            updateData.website = document.getElementById('modalEditWebsite').value.trim();
+        }
         
         if(newPhotoSrc.startsWith('data:image')) {
             updateData.photo = newPhotoSrc;
@@ -1098,9 +1115,12 @@
         db.collection('users').doc(currentUser.uid).update(updateData).then(() => {
             showToast("Profile Updated!");
             
+            // Update local state
             myData.name = newName;
-            myData.bio = newBio;
-            myData.website = newWebsite;
+            if (myData.isAdmin) {
+                myData.bio = updateData.bio;
+                myData.website = updateData.website;
+            }
             if(updateData.photo) myData.photo = updateData.photo;
             
             userCache[currentUser.uid] = { ...userCache[currentUser.uid], ...updateData };
