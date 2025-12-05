@@ -602,6 +602,7 @@
                 
                 snap.forEach(d => {
                     const p = {id: d.id, ...d.data()};
+                    // Safe check for guest
                     const isLiked = currentUser && p.likes && p.likes.includes(currentUser.uid);
                     const likeIcon = isLiked ? 'ph-fill ph-heart' : 'ph ph-heart';
                     const adminIcon = p.isAdmin ? `<i class="ph-fill ph-seal-check admin-badge"></i>` : '';
@@ -668,49 +669,13 @@
         });
     };
 
-    // --- FRIENDS LIST ---
-    const loadFriends = () => {
-        if(!currentUser) return;
-        db.collection('users').onSnapshot(snap => {
-            const list = document.getElementById('friendList');
-            list.innerHTML = "";
-            snap.forEach(d => {
-                const u = d.data();
-                if(u.uid !== currentUser.uid) {
-                    // Admin Ban Button Logic
-                    let banBtn = '';
-                    if (myData.isAdmin) {
-                        const isBanned = u.isBanned === true;
-                        banBtn = `
-                            <button onclick="toggleBanUser('${u.uid}', ${isBanned}, '${u.name}')" 
-                                class="btn" style="background:${isBanned ? '#4caf50' : '#ff4d4f'}; color:white; padding:5px 10px; font-size:12px; margin-left:10px;">
-                                ${isBanned ? 'Unban' : 'Ban'}
-                            </button>
-                        `;
-                    }
-
-                    list.innerHTML += `
-                        <div class="friend-card">
-                            <img src="${u.photo}" class="avatar" style="width:50px; height:50px;" onclick="startChat('${u.uid}', '${u.name}')">
-                            <div style="flex:1; margin-left:10px;">
-                                <div style="font-weight:600;">${u.name} ${u.isBanned ? '<span style="color:red; font-size:10px;">(BANNED)</span>' : ''}</div>
-                                <div style="font-size:12px; color:var(--text-gray);">Tap to chat</div>
-                            </div>
-                            ${banBtn}
-                            <i class="ph-fill ph-chat-circle-dots" style="color:var(--primary); font-size:24px; cursor:pointer;" onclick="startChat('${u.uid}', '${u.name}')"></i>
-                        </div>
-                    `;
-                }
-            });
-        });
-    };
-
     // --- OVERLAY (CHAT & COMMENTS) ---
     window.openOverlay = (mode, targetId, name = '') => {
+        // Guest Check
         if(!currentUser) return showToast("Please Login First!");
 
         overlayMode = mode;
-        activeTargetId = targetId;
+        
         const screen = document.getElementById('overlayScreen');
         const title = document.getElementById('overlayTitle');
         const body = document.getElementById('overlayBody');
@@ -720,9 +685,16 @@
         body.innerHTML = '<div style="text-align:center; padding:20px;">Loading...</div>';
         if(unsubOverlay) unsubOverlay();
 
+        // 🔥 FIX 2: Correct Chat ID Calculation
+        if (mode === 'chat') {
+            activeTargetId = [currentUser.uid, targetId].sort().join("_");
+        } else {
+            activeTargetId = targetId; // Post ID
+        }
+
         const ref = mode === 'comment' 
-            ? db.collection('comments').where('postId', '==', targetId) 
-            : db.collection('messages').where('chatId', '==', [currentUser.uid, targetId].sort().join("_"));
+            ? db.collection('comments').where('postId', '==', activeTargetId) 
+            : db.collection('messages').where('chatId', '==', activeTargetId);
 
         unsubOverlay = ref.onSnapshot(snap => {
             let list = [];
@@ -784,8 +756,10 @@
             });
             batch.commit().catch(e => alert("Failed. You might be banned."));
         } else {
+            // 🔥 CHAT SEND FIX
             db.collection('messages').add({
-                chatId: activeTargetId, text: txt, sender: currentUser.uid,
+                chatId: activeTargetId, // This is now correct because of openOverlay fix
+                text: txt, sender: currentUser.uid,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             }).catch(e => alert("Message failed. You might be banned."));
         }
@@ -834,7 +808,7 @@
     };
 
 </script>
-
-
 </body>
 </html>
+
+
