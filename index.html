@@ -5,26 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Modern Social</title>
     
-    <!-- Firebase SDK (v8.10.0) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script> 
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 
-    <!-- Phosphor Icons (High Quality Icons) -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
     <style>
         /* --- Modern Theme Variables --- */
         :root {
-            --primary: #6C5DD3; /* Modern Purple */
+            --primary: #6C5DD3;
             --primary-light: #A094E3;
-            --accent: #FF754C;  /* Orange Accent */
+            --accent: #FF754C;
             --bg-body: #F0F2F5;
             --bg-card: #FFFFFF;
             --text-main: #11142D;
             --text-gray: #808191;
             --border-radius: 20px;
-            --nav-height: 70px;
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; user-select: none; }
@@ -43,11 +40,12 @@
 
         /* --- Pull to Refresh Spinner --- */
         #ptr-spinner {
-            position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
-            width: 30px; height: 30px; border-radius: 50%;
-            border: 3px solid #ddd; border-top-color: var(--primary);
-            animation: spin 1s infinite linear;
-            display: none; z-index: 900;
+            position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
+            width: 25px; height: 25px; border-radius: 50%;
+            border: 2px solid #ddd; border-top-color: var(--primary);
+            animation: spin 0.8s infinite linear;
+            display: none; z-index: 900; background: white; padding: 2px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
         @keyframes spin { to { transform: translateX(-50%) rotate(360deg); } }
 
@@ -76,7 +74,7 @@
         }
         .header-title { font-size: 20px; font-weight: 800; color: var(--primary); }
 
-        .content-wrapper { flex: 1; overflow-y: auto; padding-bottom: 90px; position: relative; }
+        .content-wrapper { flex: 1; overflow-y: auto; padding-bottom: 90px; position: relative; scroll-behavior: smooth; }
         .tab-page { display: none; padding: 15px; animation: fadeIn 0.3s ease; }
         .active-tab { display: block; }
 
@@ -94,7 +92,7 @@
         .pc-user { display: flex; gap: 10px; align-items: center; }
         .pc-name { font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 4px; }
         .admin-badge { color: var(--primary); font-size: 14px; }
-        .pc-time { font-size: 12px; color: var(--text-gray); }
+        .pc-time { font-size: 11px; color: var(--text-gray); margin-top: 2px; }
         .pc-text { font-size: 15px; line-height: 1.5; margin-bottom: 10px; color: #444; }
         .pc-img { width: 100%; border-radius: 12px; margin-top: 10px; max-height: 400px; object-fit: cover; }
         
@@ -138,10 +136,8 @@
 </head>
 <body>
 
-    <!-- Pull Refresh Spinner -->
     <div id="ptr-spinner"></div>
 
-    <!-- Login -->
     <div id="loginScreen">
         <div class="logo-area">
             <i class="ph ph-hexagon logo-icon"></i>
@@ -160,7 +156,6 @@
         </div>
     </div>
 
-    <!-- Main App -->
     <div id="appInterface">
         <div class="header">
             <div class="header-title">Social Hub</div>
@@ -169,7 +164,6 @@
 
         <div class="content-wrapper" id="contentArea">
             
-            <!-- Home Feed -->
             <div id="tab-home" class="tab-page active-tab">
                 <div class="create-box">
                     <div class="input-row">
@@ -187,15 +181,14 @@
                 </div>
 
                 <div id="feedContainer"></div>
+                <div style="text-align:center; padding:20px; color:#ccc; font-size:12px;">End of Feed</div>
             </div>
 
-            <!-- Friends -->
             <div id="tab-friends" class="tab-page">
                 <h3 style="margin:0 0 15px 0;">People</h3>
                 <div id="friendList"></div>
             </div>
 
-            <!-- Profile -->
             <div id="tab-profile" class="tab-page">
                 <div class="profile-header">
                     <div style="position:relative; display:inline-block;">
@@ -216,7 +209,6 @@
 
         </div>
 
-        <!-- Floating Navigation -->
         <div class="nav-dock">
             <div class="nav-item active" onclick="switchTab('home', this)">
                 <i class="ph-fill ph-house"></i>
@@ -233,7 +225,6 @@
         </div>
     </div>
 
-    <!-- Fullscreen Comment/Chat Overlays -->
     <div id="overlayScreen" class="overlay-screen">
         <div class="os-header">
             <i class="ph ph-arrow-left" style="font-size:24px; cursor:pointer;" onclick="closeOverlay()"></i>
@@ -267,9 +258,10 @@
 
     let currentUser = null;
     let myData = {};
-    let overlayMode = ''; // 'comment' or 'chat'
-    let activeTargetId = null; // postId or chatId
+    let overlayMode = ''; 
+    let activeTargetId = null; 
     let unsubOverlay = null;
+    let feedUnsubscribe = null; // To manage memory
 
     // --- PULL TO REFRESH LOGIC ---
     let pStart = {x:0, y:0};
@@ -279,14 +271,14 @@
     contentArea.addEventListener('touchstart', e => { pStart.y = e.touches[0].clientY; });
     contentArea.addEventListener('touchmove', e => {
         let y = e.touches[0].clientY;
-        if(contentArea.scrollTop === 0 && y > pStart.y + 50) {
+        if(contentArea.scrollTop === 0 && y > pStart.y + 70) {
             ptrSpinner.style.display = 'block';
         }
     });
     contentArea.addEventListener('touchend', e => {
         if(ptrSpinner.style.display === 'block') {
-            loadFeed(); // Reload feed
-            setTimeout(() => { ptrSpinner.style.display = 'none'; }, 1000);
+            loadFeed(); // Optimized Reload
+            setTimeout(() => { ptrSpinner.style.display = 'none'; }, 800);
         }
     });
 
@@ -358,63 +350,77 @@
             text, image: img, uid: currentUser.uid,
             authorName: myData.name, authorPhoto: myData.photo,
             isAdmin: myData.isAdmin || false, likes: [],
+            commentCount: 0, // Initialize count
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
         
         document.getElementById('postInput').value = "";
         document.getElementById('previewImg').style.display = 'none';
+        document.getElementById('previewImg').src = "";
     };
 
     const loadFeed = () => {
-        db.collection('posts').onSnapshot(snap => {
-            let posts = [];
-            snap.forEach(d => posts.push({id: d.id, ...d.data()}));
-            // Client side sort
-            posts.sort((a,b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
+        if(feedUnsubscribe) feedUnsubscribe(); // Stop listening to old feed to save memory
 
-            const container = document.getElementById('feedContainer');
-            container.innerHTML = "";
-            posts.forEach(p => {
-                const isLiked = p.likes && p.likes.includes(currentUser.uid);
-                const likeIcon = isLiked ? 'ph-fill ph-heart' : 'ph ph-heart';
-                const adminIcon = p.isAdmin ? `<i class="ph-fill ph-seal-check admin-badge"></i>` : '';
-                const delBtn = (currentUser.uid === p.uid || myData.isAdmin) ? `<i class="ph ph-trash" onclick="deletePost('${p.id}')" style="color:#ff4d4f;cursor:pointer;"></i>` : '';
-                const time = p.timestamp ? new Date(p.timestamp.toDate()).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+        // Optimize: Limit to 50 posts and Order by Server Time
+        feedUnsubscribe = db.collection('posts')
+            .orderBy('timestamp', 'desc')
+            .limit(50) 
+            .onSnapshot(snap => {
+                const container = document.getElementById('feedContainer');
+                container.innerHTML = "";
+                
+                snap.forEach(d => {
+                    const p = {id: d.id, ...d.data()};
+                    const isLiked = p.likes && p.likes.includes(currentUser.uid);
+                    const likeIcon = isLiked ? 'ph-fill ph-heart' : 'ph ph-heart';
+                    const adminIcon = p.isAdmin ? `<i class="ph-fill ph-seal-check admin-badge"></i>` : '';
+                    const delBtn = (currentUser.uid === p.uid || myData.isAdmin) ? `<i class="ph ph-trash" onclick="deletePost('${p.id}')" style="color:#ff4d4f;cursor:pointer;"></i>` : '';
+                    
+                    // Improved Time Display
+                    let timeDisplay = "Just now";
+                    if(p.timestamp) {
+                        const date = p.timestamp.toDate();
+                        timeDisplay = date.toLocaleDateString() + " " + date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                    }
 
-                container.innerHTML += `
-                    <div class="post-card">
-                        <div class="pc-header">
-                            <div class="pc-user" onclick="startChat('${p.uid}', '${p.authorName}')">
-                                <img src="${p.authorPhoto}" class="avatar" style="width:40px; height:40px;">
-                                <div>
-                                    <div class="pc-name">${p.authorName} ${adminIcon}</div>
-                                    <div class="pc-time">${time}</div>
+                    // Comment Count Display
+                    const commentCount = p.commentCount ? p.commentCount : 0;
+
+                    container.innerHTML += `
+                        <div class="post-card">
+                            <div class="pc-header">
+                                <div class="pc-user" onclick="startChat('${p.uid}', '${p.authorName}')">
+                                    <img src="${p.authorPhoto}" class="avatar" style="width:40px; height:40px;">
+                                    <div>
+                                        <div class="pc-name">${p.authorName} ${adminIcon}</div>
+                                        <div class="pc-time">${timeDisplay}</div>
+                                    </div>
+                                </div>
+                                ${delBtn}
+                            </div>
+                            <div class="pc-text">${p.text || ''}</div>
+                            ${p.image ? `<img src="${p.image}" class="pc-img">` : ''}
+                            
+                            <div class="pc-stats">
+                                <span>${p.likes ? p.likes.length : 0} Likes</span>
+                                <span onclick="openOverlay('comment', '${p.id}')">${commentCount} Comments</span>
+                            </div>
+                            <div class="pc-actions">
+                                <div class="pc-btn ${isLiked?'liked':''}" onclick="toggleLike('${p.id}', ${isLiked})">
+                                    <i class="${likeIcon}" style="font-size:20px;"></i> Like
+                                </div>
+                                <div class="pc-btn" onclick="openOverlay('comment', '${p.id}')">
+                                    <i class="ph ph-chat-circle" style="font-size:20px;"></i> Comment
                                 </div>
                             </div>
-                            ${delBtn}
                         </div>
-                        <div class="pc-text">${p.text || ''}</div>
-                        ${p.image ? `<img src="${p.image}" class="pc-img">` : ''}
-                        
-                        <div class="pc-stats">
-                            <span>${p.likes ? p.likes.length : 0} Likes</span>
-                            <span onclick="openOverlay('comment', '${p.id}')">Comments</span>
-                        </div>
-                        <div class="pc-actions">
-                            <div class="pc-btn ${isLiked?'liked':''}" onclick="toggleLike('${p.id}', ${isLiked})">
-                                <i class="${likeIcon}" style="font-size:20px;"></i> Like
-                            </div>
-                            <div class="pc-btn" onclick="openOverlay('comment', '${p.id}')">
-                                <i class="ph ph-chat-circle" style="font-size:20px;"></i> Comment
-                            </div>
-                        </div>
-                    </div>
-                `;
+                    `;
+                });
             });
-        });
     };
 
-    const deletePost = (id) => confirm("Delete?") && db.collection('posts').doc(id).delete();
+    const deletePost = (id) => confirm("Delete this post?") && db.collection('posts').doc(id).delete();
     const toggleLike = (id, loved) => db.collection('posts').doc(id).update({
         likes: loved ? firebase.firestore.FieldValue.arrayRemove(currentUser.uid) : firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
     });
@@ -428,21 +434,24 @@
         const body = document.getElementById('overlayBody');
         
         screen.style.display = 'flex';
-        body.innerHTML = '';
+        body.innerHTML = '<div style="text-align:center; padding:20px;">Loading...</div>';
         if(unsubOverlay) unsubOverlay();
 
         if (mode === 'comment') {
             title.innerText = "Comments";
             unsubOverlay = db.collection('comments').where('postId', '==', targetId).onSnapshot(snap => {
+                body.innerHTML = '';
                 let list = [];
                 snap.forEach(d => list.push(d.data()));
                 list.sort((a,b) => (a.timestamp?.toMillis()||0) - (b.timestamp?.toMillis()||0));
                 
-                body.innerHTML = list.map(c => `
-                    <div style="display:flex; gap:10px; margin-bottom:10px;">
+                if(list.length === 0) body.innerHTML = '<div style="text-align:center; color:#999; margin-top:50px;">No comments yet.</div>';
+
+                body.innerHTML += list.map(c => `
+                    <div style="display:flex; gap:10px; margin-bottom:15px;">
                         <img src="${c.userPhoto}" class="avatar" style="width:32px; height:32px;">
                         <div class="bubble bubble-other">
-                            <div style="font-weight:bold; font-size:12px;">${c.userName}</div>
+                            <div style="font-weight:bold; font-size:12px; opacity:0.7; margin-bottom:2px;">${c.userName}</div>
                             ${c.text}
                         </div>
                     </div>
@@ -452,15 +461,14 @@
         } else {
             // CHAT
             title.innerText = name;
-            // Chat ID construction
             const ids = [currentUser.uid, targetId].sort();
             const chatId = ids.join("_");
-            activeTargetId = chatId; // Override for sending
+            activeTargetId = chatId; 
 
-            unsubOverlay = db.collection('messages').where('chatId', '==', chatId).onSnapshot(snap => {
+            unsubOverlay = db.collection('messages').where('chatId', '==', chatId).orderBy('timestamp', 'asc').limit(100).onSnapshot(snap => {
+                body.innerHTML = '';
                 let msgs = [];
                 snap.forEach(d => msgs.push(d.data()));
-                msgs.sort((a,b) => (a.timestamp?.toMillis()||0) - (b.timestamp?.toMillis()||0));
 
                 body.innerHTML = msgs.map(m => {
                     const isMe = m.sender === currentUser.uid;
@@ -481,11 +489,23 @@
         if(!txt) return;
 
         if(overlayMode === 'comment') {
-            db.collection('comments').add({
+            // Add comment and increment counter atomically
+            const batch = db.batch();
+            const commentRef = db.collection('comments').doc();
+            const postRef = db.collection('posts').doc(activeTargetId);
+
+            batch.set(commentRef, {
                 postId: activeTargetId, text: txt, uid: currentUser.uid,
                 userName: myData.name, userPhoto: myData.photo,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
+            // Update Comment Count
+            batch.update(postRef, {
+                commentCount: firebase.firestore.FieldValue.increment(1)
+            });
+
+            batch.commit();
+
         } else {
             db.collection('messages').add({
                 chatId: activeTargetId, text: txt, sender: currentUser.uid,
@@ -497,7 +517,7 @@
 
     // --- FRIENDS & PROFILE ---
     const loadFriends = () => {
-        db.collection('users').onSnapshot(snap => {
+        db.collection('users').limit(50).onSnapshot(snap => {
             const list = document.getElementById('friendList');
             list.innerHTML = "";
             snap.forEach(d => {
@@ -534,5 +554,3 @@
 </script>
 </body>
 </html>
-
-
