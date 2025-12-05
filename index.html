@@ -14,7 +14,6 @@
     <style>
         /* --- Theme Variables --- */
         :root {
-            /* Light Mode (Default) */
             --primary: #6C5DD3;
             --primary-light: #A094E3;
             --accent: #FF754C;
@@ -28,14 +27,14 @@
             --border-radius: 20px;
         }
 
-        /* DARK MODE VARIABLES */
+        /* DARK MODE */
         body.dark-mode {
-            --primary: #8E84F5; /* Lighter Purple for Dark Mode */
+            --primary: #8E84F5;
             --primary-light: #5a4ad1;
             --accent: #FF754C;
-            --bg-body: #121212; /* Deep Black */
-            --bg-card: #1E1E1E; /* Dark Gray Card */
-            --text-main: #E0E0E0; /* White Text */
+            --bg-body: #121212;
+            --bg-card: #1E1E1E;
+            --text-main: #E0E0E0;
             --text-gray: #A0A0A0;
             --input-bg: #2C2C2C;
             --border-color: #333333;
@@ -56,10 +55,9 @@
         /* --- Animations --- */
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes pop { 50% { transform: scale(1.2); } }
-        @keyframes slideUp { from { transform: translate(-50%, 100%); } to { transform: translate(-50%, -50%); } }
         @keyframes toastSlide { from { transform: translateX(-50%) translateY(100px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
 
-        /* --- Pull to Refresh Spinner --- */
+        /* --- Pull to Refresh --- */
         #ptr-spinner {
             position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
             width: 25px; height: 25px; border-radius: 50%;
@@ -78,19 +76,8 @@
         
         .avatar { border-radius: 50%; object-fit: cover; background: #eee; flex-shrink: 0; border: 2px solid var(--bg-body); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         
-        /* --- Login Screen --- */
-        #loginScreen { position: fixed; inset: 0; background: var(--bg-card); z-index: 5000; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; color: var(--text-main); }
-        .logo-area { text-align: center; margin-bottom: 40px; }
-        .logo-icon { font-size: 60px; color: var(--primary); margin-bottom: 10px; }
-        .logo-text { font-size: 28px; font-weight: 800; color: var(--text-main); }
-        .login-options { display: flex; flex-direction: column; gap: 15px; width: 100%; max-width: 300px; }
-        .login-btn { padding: 12px; border-radius: 15px; font-size: 16px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-main); display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-
-        /* --- Main App --- */
-        #appInterface { display: none; flex-direction: column; height: 100%; }
-        
+        /* --- Layout --- */
         .header { 
-            background: rgba(var(--bg-card), 0.95); /* Adjusted via JS logic if needed, but keeping simple transparency */
             background: var(--bg-card);
             padding: 0 20px; height: 60px; display: flex; align-items: center; justify-content: space-between; 
             position: sticky; top: 0; z-index: 1000; border-bottom: 1px solid var(--border-color);
@@ -98,7 +85,7 @@
         .header-title { font-size: 20px; font-weight: 800; color: var(--primary); }
 
         .content-wrapper { flex: 1; overflow-y: auto; padding-bottom: 90px; position: relative; scroll-behavior: smooth; }
-        .tab-page { display: none; padding: 15px; animation: fadeIn 0.3s ease; }
+        .tab-page { display: none; padding: 15px; animation: fadeIn 0.3s ease; height: 100%; }
         .active-tab { display: block; }
 
         /* --- Post Create --- */
@@ -140,7 +127,7 @@
         .nav-indicator { width: 4px; height: 4px; background: var(--primary); border-radius: 50%; position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); display: none; }
         .nav-item.active .nav-indicator { display: block; }
 
-        /* --- Comments & Chat Overlay --- */
+        /* --- Comments Overlay --- */
         .overlay-screen { position: fixed; inset: 0; background: var(--bg-card); z-index: 3000; display: none; flex-direction: column; animation: fadeIn 0.2s; color: var(--text-main); }
         .os-header { height: 60px; display: flex; align-items: center; padding: 0 20px; border-bottom: 1px solid var(--border-color); gap: 15px; }
         .os-title { font-weight: 700; font-size: 18px; }
@@ -160,11 +147,58 @@
         /* --- Friend List Item --- */
         .friend-card { background: var(--bg-card); padding: 15px; border-radius: 15px; display: flex; align-items: center; gap: 15px; margin-bottom: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
         
-        /* --- Profile --- */
-        .profile-header { background: var(--bg-card); border-radius: 20px; padding: 30px 20px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.03); position: relative; }
+        /* --- Profile Styles --- */
+        .profile-header { background: var(--bg-card); border-radius: 20px; padding: 30px 20px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.03); position: relative; margin-bottom: 20px;}
         .dark-mode-toggle { position: absolute; top: 15px; right: 15px; background: var(--input-bg); padding: 8px; border-radius: 50%; cursor: pointer; color: var(--text-main); }
+        
+        /* --- FIXED: GUEST CARD LAYOUT --- */
+        /* Center the guest view correctly in the tab */
+        #profile-guest-view {
+            display: none; /* Toggled by JS */
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            width: 100%;
+            padding: 20px;
+        }
 
-        /* --- EDIT MODAL --- */
+        .guest-welcome-card {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            color: white;
+            border-radius: 25px;
+            padding: 40px 30px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(108, 93, 211, 0.4);
+            width: 100%;
+            max-width: 350px; /* Restrict width so it looks good on tablets too */
+            margin: 0 auto;
+        }
+        .guest-icon { font-size: 60px; margin-bottom: 15px; }
+        .guest-title { font-size: 24px; font-weight: 800; margin-bottom: 10px; }
+        .guest-desc { font-size: 14px; opacity: 0.9; margin-bottom: 30px; line-height: 1.6; }
+        .login-btn-group { display: flex; flex-direction: column; gap: 12px; }
+        .social-login-btn {
+            background: white; color: var(--text-main);
+            padding: 14px; border-radius: 15px; border: none;
+            font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            font-size: 15px;
+        }
+
+        /* --- FEED GUEST BANNER --- */
+        #guestFeedBanner {
+            display: none; 
+            text-align: center; 
+            padding: 15px; 
+            margin-bottom: 20px;
+            background: rgba(108, 93, 211, 0.1); /* Light purple bg */
+            border-radius: 15px;
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        /* --- MODAL & TOAST --- */
         .modal-overlay {
             position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
             z-index: 4000; display: none; align-items: center; justify-content: center;
@@ -178,7 +212,6 @@
         .modal-title { font-size: 18px; font-weight: 800; }
         .modal-btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px; }
 
-        /* --- TOAST NOTIFICATION --- */
         #toastBox {
             position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
             background: rgba(40, 40, 45, 0.95); color: white;
@@ -189,7 +222,7 @@
             backdrop-filter: blur(5px);
         }
         #toastBox.show { animation: toastSlide 0.5s forwards; }
-        .toast-icon { background: #4caf50; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+        .toast-icon { background: var(--primary); width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -199,24 +232,6 @@
     <div id="toastBox">
         <div class="toast-icon"><i class="ph-bold ph-check"></i></div>
         <span id="toastMsg">Success</span>
-    </div>
-
-    <div id="loginScreen">
-        <div class="logo-area">
-            <i class="ph ph-hexagon logo-icon"></i>
-            <div class="logo-text">Social69</div>
-            <p style="color:var(--text-gray);">Connect simply.</p>
-        </div>
-        <div class="login-options">
-            <button class="login-btn" onclick="loginGoogle()">
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20">
-                Continue with Google
-            </button>
-            <button class="login-btn" onclick="loginGithub()">
-                <i class="ph-fill ph-github-logo" style="font-size:22px;"></i>
-                Continue with GitHub
-            </button>
-        </div>
     </div>
 
     <div id="editModal" class="modal-overlay">
@@ -230,7 +245,7 @@
         </div>
     </div>
 
-    <div id="appInterface">
+    <div id="appInterface" style="display:flex; flex-direction:column; height:100%;">
         <div class="header">
             <div class="header-title">Social69</div>
             <img id="myHeaderThumb" class="avatar" style="width:35px; height:35px;" onclick="switchTab('profile')">
@@ -239,7 +254,7 @@
         <div class="content-wrapper" id="contentArea">
             
             <div id="tab-home" class="tab-page active-tab">
-                <div class="create-box">
+                <div id="loggedInCreateBox" class="create-box" style="display:none;">
                     <div class="input-row">
                         <img id="postThumb" class="avatar" style="width:40px; height:40px;">
                         <textarea id="postInput" class="post-input" placeholder="What's happening?" rows="3"></textarea>
@@ -254,6 +269,11 @@
                     </div>
                 </div>
 
+                <div id="guestFeedBanner">
+                    <i class="ph-fill ph-lock-key" style="font-size:24px; vertical-align:middle; margin-right:5px;"></i>
+                    Login to post & interact with posts!
+                </div>
+
                 <div id="feedContainer"></div>
                 <div style="text-align:center; padding:20px; color:#ccc; font-size:12px;">End of Feed</div>
             </div>
@@ -264,25 +284,52 @@
             </div>
 
             <div id="tab-profile" class="tab-page">
-                <div class="profile-header">
-                    <div class="dark-mode-toggle" onclick="toggleTheme()">
-                        <i id="themeIcon" class="ph-fill ph-moon" style="font-size:20px;"></i>
-                    </div>
-
-                    <div style="position:relative; display:inline-block;">
-                        <img id="profilePic" class="avatar" style="width:100px; height:100px; border:4px solid var(--bg-body);">
-                        <label for="newProfilePic" style="position:absolute; bottom:0; right:0; background:var(--primary); color:white; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer;">
-                            <i class="ph ph-camera"></i>
-                        </label>
-                        <input type="file" id="newProfilePic" accept="image/*" style="display:none" onchange="uploadProfilePic()">
-                    </div>
-                    <h2 id="profileNameDisplay" style="margin:15px 0 5px;">User Name</h2>
-                    <input type="text" id="editName" class="post-input" style="text-align:center; margin-bottom:15px;" placeholder="Edit display name">
-                    <button class="btn btn-primary" style="width:100%; margin-bottom:10px;" onclick="saveName()">Save Changes</button>
-                    <button class="btn btn-ghost" style="width:100%; color:#ff4d4f;" onclick="auth.signOut()">
-                        <i class="ph ph-sign-out"></i> Log Out
+                
+                <div style="text-align:right; margin-bottom:10px;">
+                    <button class="btn btn-ghost" onclick="toggleTheme()" style="background:var(--bg-card);">
+                        <i id="themeIcon" class="ph-fill ph-moon" style="font-size:20px;"></i> Theme
                     </button>
                 </div>
+
+                <div id="profile-guest-view">
+                    <div class="guest-welcome-card">
+                        <i class="ph-fill ph-planet guest-icon"></i>
+                        <div class="guest-title">Welcome to Social69</div>
+                        <div class="guest-desc">
+                            Join our community to share your moments,<br>
+                            connect with friends, and vibe together.
+                        </div>
+                        <div class="login-btn-group">
+                            <button class="social-login-btn" onclick="loginGoogle()">
+                                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20">
+                                Continue with Google
+                            </button>
+                            <button class="social-login-btn" onclick="loginGithub()">
+                                <i class="ph-fill ph-github-logo" style="font-size:22px;"></i>
+                                Continue with GitHub
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="profile-user-view" style="display:none;">
+                    <div class="profile-header">
+                        <div style="position:relative; display:inline-block;">
+                            <img id="profilePic" class="avatar" style="width:100px; height:100px; border:4px solid var(--bg-body);">
+                            <label for="newProfilePic" style="position:absolute; bottom:0; right:0; background:var(--primary); color:white; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+                                <i class="ph ph-camera"></i>
+                            </label>
+                            <input type="file" id="newProfilePic" accept="image/*" style="display:none" onchange="uploadProfilePic()">
+                        </div>
+                        <h2 id="profileNameDisplay" style="margin:15px 0 5px;">User Name</h2>
+                        <input type="text" id="editName" class="post-input" style="text-align:center; margin-bottom:15px;" placeholder="Edit display name">
+                        <button class="btn btn-primary" style="width:100%; margin-bottom:10px;" onclick="saveName()">Save Changes</button>
+                        <button class="btn btn-ghost" style="width:100%; color:#ff4d4f;" onclick="auth.signOut()">
+                            <i class="ph ph-sign-out"></i> Log Out
+                        </button>
+                    </div>
+                </div>
+
             </div>
 
         </div>
@@ -350,7 +397,7 @@
             document.getElementById('themeIcon').classList.replace('ph-moon', 'ph-sun');
         }
     };
-    checkTheme(); // Run on load
+    checkTheme();
 
     window.toggleTheme = () => {
         document.body.classList.toggle('dark-mode');
@@ -401,13 +448,19 @@
         }
     });
 
-    // --- AUTH ---
+    // --- AUTH CHANGE HANDLING ---
     auth.onAuthStateChanged(user => {
         if (user) {
+            // User Logged In
             currentUser = user;
-            document.getElementById('loginScreen').style.display = 'none';
-            document.getElementById('appInterface').style.display = 'flex';
             
+            // UI Updates
+            document.getElementById('loggedInCreateBox').style.display = 'block';
+            document.getElementById('guestFeedBanner').style.display = 'none';
+            document.getElementById('profile-guest-view').style.display = 'none'; // Hide Guest Card
+            document.getElementById('profile-user-view').style.display = 'block'; // Show Profile
+
+            // Load User Data
             db.collection('users').doc(user.uid).onSnapshot(doc => {
                 if(doc.exists) {
                     myData = doc.data();
@@ -422,19 +475,37 @@
                 updateUI();
                 loadFriends();
             });
-            loadFeed();
         } else {
-            document.getElementById('loginScreen').style.display = 'flex';
-            document.getElementById('appInterface').style.display = 'none';
+            // User Is Guest
+            currentUser = null;
+            myData = {};
+
+            // UI Updates
+            document.getElementById('loggedInCreateBox').style.display = 'none';
+            document.getElementById('guestFeedBanner').style.display = 'block';
+            // FIXED: DISPLAY FLEX to center the card
+            document.getElementById('profile-guest-view').style.display = 'flex'; 
+            document.getElementById('profile-user-view').style.display = 'none';
+            
+            // Header Thumb Placeholder
+            document.getElementById('myHeaderThumb').src = "https://via.placeholder.com/100?text=Guest";
+            document.getElementById('friendList').innerHTML = "<div style='text-align:center; padding:20px; color:var(--text-gray);'>Please login to see friends.</div>";
         }
+        
+        // Load feed regardless of auth state (Guest can see posts)
+        loadFeed();
     });
 
     const loginGoogle = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
     const loginGithub = () => auth.signInWithPopup(new firebase.auth.GithubAuthProvider()).catch(e => alert("Please enable GitHub in Firebase Console!"));
     
     const updateUI = () => {
+        if(!currentUser) return;
         const pic = myData.photo || 'https://via.placeholder.com/100';
-        ['myHeaderThumb', 'postThumb', 'profilePic'].forEach(id => document.getElementById(id).src = pic);
+        ['myHeaderThumb', 'postThumb', 'profilePic'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.src = pic;
+        });
         document.getElementById('editName').value = myData.name;
         document.getElementById('profileNameDisplay').innerText = myData.name;
     };
@@ -461,6 +532,7 @@
     };
 
     const submitPost = async () => {
+        if(!currentUser) return showToast("Please Login First!");
         const text = document.getElementById('postInput').value;
         const img = document.getElementById('previewImg').style.display === 'block' ? document.getElementById('previewImg').src : null;
         if(!text && !img) return;
@@ -476,6 +548,7 @@
         document.getElementById('postInput').value = "";
         document.getElementById('previewImg').style.display = 'none';
         document.getElementById('previewImg').src = "";
+        showToast("Post Sent!");
     };
 
     // --- EDIT DIALOG LOGIC ---
@@ -498,7 +571,7 @@
             db.collection('posts').doc(editingPostId).update({ text: newText })
             .then(() => {
                 closeEditModal();
-                showToast("Post updated successfully!");
+                showToast("Post updated!");
             });
         }
     };
@@ -511,13 +584,9 @@
                     text: text,
                     url: window.location.href
                 });
-            } catch (err) {
-                console.log('Error sharing:', err);
-            }
+            } catch (err) { console.log('Error sharing:', err); }
         } else {
-            navigator.clipboard.writeText(text).then(() => {
-                showToast("Link copied to clipboard!");
-            });
+            navigator.clipboard.writeText(text).then(() => showToast("Copied!"));
         }
     };
 
@@ -532,11 +601,12 @@
                 
                 snap.forEach(d => {
                     const p = {id: d.id, ...d.data()};
-                    const isLiked = p.likes && p.likes.includes(currentUser.uid);
+                    // Safe check for guest
+                    const isLiked = currentUser && p.likes && p.likes.includes(currentUser.uid);
                     const likeIcon = isLiked ? 'ph-fill ph-heart' : 'ph ph-heart';
                     const adminIcon = p.isAdmin ? `<i class="ph-fill ph-seal-check admin-badge"></i>` : '';
                     
-                    const isOwner = currentUser.uid === p.uid || myData.isAdmin;
+                    const isOwner = currentUser && (currentUser.uid === p.uid || myData.isAdmin);
                     const delBtn = isOwner ? `<i class="ph ph-trash" onclick="deletePost('${p.id}')" style="color:#ff4d4f;cursor:pointer;"></i>` : '';
                     const editBtn = isOwner ? `<i class="ph ph-pencil-simple" onclick="openEditModal('${p.id}')" style="color:#6C5DD3;cursor:pointer;margin-right:10px;"></i>` : '';
                     
@@ -590,12 +660,19 @@
     };
 
     const deletePost = (id) => confirm("Delete this post?") && db.collection('posts').doc(id).delete();
-    const toggleLike = (id, loved) => db.collection('posts').doc(id).update({
-        likes: loved ? firebase.firestore.FieldValue.arrayRemove(currentUser.uid) : firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
-    });
+    
+    const toggleLike = (id, loved) => {
+        if(!currentUser) return showToast("Please Login to Like!");
+        db.collection('posts').doc(id).update({
+            likes: loved ? firebase.firestore.FieldValue.arrayRemove(currentUser.uid) : firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
+        });
+    };
 
     // --- OVERLAY (CHAT & COMMENTS) ---
     window.openOverlay = (mode, targetId, name = '') => {
+        // Guest Check
+        if(!currentUser) return showToast("Please Login First!");
+
         overlayMode = mode;
         activeTargetId = targetId;
         const screen = document.getElementById('overlayScreen');
@@ -696,6 +773,7 @@
 
     // --- FRIENDS & PROFILE ---
     const loadFriends = () => {
+        if(!currentUser) return;
         db.collection('users').onSnapshot(snap => {
             const list = document.getElementById('friendList');
             list.innerHTML = "";
@@ -718,9 +796,7 @@
 
     window.saveName = () => {
         db.collection('users').doc(currentUser.uid).update({ name: document.getElementById('editName').value })
-        .then(() => {
-            showToast("Profile name updated!");
-        });
+        .then(() => showToast("Saved!"));
     };
 
     window.uploadProfilePic = () => {
