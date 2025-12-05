@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Group Chat with Login</title>
+    <title>Advanced Chat</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     
@@ -13,67 +13,82 @@
 
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: 'Inter', sans-serif; background-color: #f5f7fb; margin: 0; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+        body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; margin: 0; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
 
-        /* Login Screen Design */
+        /* Login Screen */
         #loginScreen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: white; z-index: 100;
-            display: flex; flex-direction: column;
-            justify-content: center; align-items: center;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
         }
         .login-btn {
-            background: #4285F4; color: white; border: none;
-            padding: 12px 24px; border-radius: 4px; font-size: 16px;
-            cursor: pointer; display: flex; align-items: center; gap: 10px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            background: #4285F4; color: white; border: none; padding: 12px 24px; border-radius: 4px; font-size: 16px; cursor: pointer; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
 
-        /* Chat UI (Hidden by default) */
+        /* Chat UI */
         #chatInterface { display: none; flex-direction: column; height: 100%; }
 
-        .header { background: white; padding: 10px 15px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 5px rgba(0,0,0,0.05); }
-        .user-profile { display: flex; align-items: center; gap: 10px; }
-        .user-profile img { width: 35px; height: 35px; border-radius: 50%; }
-        .logout-btn { background: #ff4d4f; color: white; border: none; padding: 5px 12px; border-radius: 15px; font-size: 12px; cursor: pointer; }
+        /* Header */
+        .header { background: white; padding: 10px 15px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #ddd; }
+        .user-profile { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        .user-profile img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #eee; }
+        .edit-hint { font-size: 10px; color: #0084ff; display: block; }
+        .logout-btn { background: #ff4d4f; color: white; border: none; padding: 6px 14px; border-radius: 20px; font-size: 12px; cursor: pointer; }
 
-        .chat-area { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        /* Chat Area */
+        .chat-area { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background-image: url('https://i.ibb.co/3s1f9Jq/default-wallpaper.png'); background-size: cover; }
+        
         .message-row { display: flex; width: 100%; align-items: flex-end; gap: 8px; }
         .my-row { flex-direction: row-reverse; }
         
-        .avatar { width: 30px; height: 30px; border-radius: 50%; background: #ccc; flex-shrink: 0; }
+        .avatar { width: 28px; height: 28px; border-radius: 50%; background: #ccc; flex-shrink: 0; object-fit: cover; }
         
-        .bubble-container { display: flex; flex-direction: column; max-width: 70%; }
-        .sender-name { font-size: 10px; color: #777; margin-bottom: 2px; }
-        .my-row .sender-name { text-align: right; display: none; } /* ကိုယ့်နာမည်ကိုယ်မပြ */
-
-        .bubble { padding: 10px 14px; border-radius: 16px; font-size: 15px; line-height: 1.4; word-wrap: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-        .my-bubble { background: #0061ff; color: white; border-bottom-right-radius: 4px; }
-        .other-bubble { background: white; color: #333; border-bottom-left-radius: 4px; }
+        .bubble-container { display: flex; flex-direction: column; max-width: 75%; }
+        
+        .bubble { padding: 8px 12px; border-radius: 12px; font-size: 15px; line-height: 1.4; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); word-wrap: break-word;}
+        .my-bubble { background: #dcf8c6; color: black; border-bottom-right-radius: 0; }
+        .other-bubble { background: white; color: black; border-bottom-left-radius: 0; }
         
         .bubble img { max-width: 100%; border-radius: 8px; margin-top: 5px; }
 
+        /* Status Ticks (Sent/Seen) */
+        .msg-info { display: flex; justify-content: flex-end; align-items: center; gap: 3px; margin-top: 2px; }
+        .time { font-size: 10px; color: #999; }
+        .ticks { font-size: 10px; font-weight: bold; display: none; } /* Only show for my messages */
+        .my-row .ticks { display: inline; }
+        .tick-sent { color: #999; } /* Grey Tick */
+        .tick-seen { color: #34b7f1; } /* Blue Tick */
+
         /* Input Bar */
-        .input-bar { background: white; padding: 10px 15px; display: flex; align-items: center; border-top: 1px solid #eee; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
-        .icon-btn { background: none; border: none; font-size: 24px; cursor: pointer; padding: 0 10px; }
-        .msg-input { flex: 1; background: #f0f2f5; border: none; padding: 12px 15px; border-radius: 20px; outline: none; }
-        .send-btn { background: #0061ff; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; margin-left: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;}
+        .input-bar { background: white; padding: 8px 10px; display: flex; align-items: center; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+        .icon-btn { font-size: 22px; padding: 0 10px; cursor: pointer; }
+        .msg-input { flex: 1; background: #fff; border: 1px solid #ddd; padding: 10px 15px; border-radius: 25px; outline: none; font-size: 15px; }
+        .send-btn { background: #0084ff; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; margin-left: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+        /* Edit Profile Modal */
+        #editModal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 200; justify-content: center; align-items: center;
+        }
+        .modal-content { background: white; padding: 20px; border-radius: 10px; width: 80%; text-align: center; }
+        .modal-btn { padding: 10px 20px; margin-top: 10px; border-radius: 5px; border: none; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <div id="loginScreen">
-        <h2 style="color:#333; margin-bottom: 20px;">Chat Room</h2>
-        <button class="login-btn" onclick="googleLogin()">
-            <span>G</span> Login with Google
-        </button>
+        <h2 style="color:#333; margin-bottom: 20px;">Chat App</h2>
+        <button class="login-btn" onclick="googleLogin()"><span>G</span> Login with Google</button>
     </div>
 
     <div id="chatInterface">
         <div class="header">
-            <div class="user-profile">
-                <img id="myAvatar" src="" alt="Profile">
-                <span id="myName" style="font-weight:600; font-size:14px;">User</span>
+            <div class="user-profile" onclick="openEditModal()">
+                <img id="myDisplayPic" src="" alt="Profile">
+                <div>
+                    <span id="myName" style="font-weight:600; font-size:14px; display:block;">User</span>
+                    <span class="edit-hint">ပုံပြောင်းရန် နှိပ်ပါ</span>
+                </div>
             </div>
             <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
@@ -81,16 +96,26 @@
         <div class="chat-area" id="messageList"></div>
 
         <div class="input-bar">
-            <label for="fileInput" class="icon-btn">📷</label>
-            <input type="file" id="fileInput" accept="image/*" style="display: none;">
+            <label for="imgUpload" class="icon-btn">📷</label>
+            <input type="file" id="imgUpload" accept="image/*" style="display: none;">
             <input type="text" class="msg-input" id="msgInput" placeholder="စာရိုက်ပါ..." autocomplete="off">
             <button class="send-btn" onclick="sendMsg()">➤</button>
         </div>
     </div>
 
+    <div id="editModal">
+        <div class="modal-content">
+            <h3>Change Profile Picture</h3>
+            <input type="file" id="profileUpload" accept="image/*" style="margin: 15px 0;">
+            <br>
+            <button class="modal-btn" style="background:#0084ff; color:white;" onclick="saveProfilePic()">Save</button>
+            <button class="modal-btn" style="background:#ddd;" onclick="closeEditModal()">Cancel</button>
+        </div>
+    </div>
+
 <script>
     // --------------------------------------------------------------
-    // ⚠️ သင့် Firebase Config အဟောင်းကို ဒီမှာ ထည့်ပါ
+    // ⚠️ သင့် Firebase Config ကို ဒီမှာ ထည့်ပါ
     // --------------------------------------------------------------
     const firebaseConfig = {
   apiKey: "AIzaSyCUteIjOOPxPYrCutDSo9t0cVtLqnGTWxU",
@@ -102,46 +127,75 @@
 };
     // --------------------------------------------------------------
 
-    // Initialize Firebase
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
     let currentUser = null;
+    let myCurrentAvatar = ""; // ကိုယ်လက်ရှိသုံးနေတဲ့ပုံ
 
-    // --- Authentication Logic ---
-    
-    // Login အခြေအနေကို စောင့်ကြည့်ခြင်း
+    // --- Authentication ---
     auth.onAuthStateChanged((user) => {
         if (user) {
-            // Login ဝင်ထားရင် Chat ကို ပြမယ်
             currentUser = user;
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('chatInterface').style.display = 'flex';
-            document.getElementById('myAvatar').src = user.photoURL;
-            document.getElementById('myName').innerText = user.displayName;
-            loadMessages(); // စာတွေကို ဆွဲထုတ်မယ်
+            
+            // Database ထဲက ကိုယ့် Profile ပုံဟောင်းကို ရှာမယ်
+            db.collection('users').doc(user.uid).get().then((doc) => {
+                if(doc.exists && doc.data().photo) {
+                    myCurrentAvatar = doc.data().photo;
+                } else {
+                    myCurrentAvatar = user.photoURL; // မရှိရင် Google ပုံသုံးမယ်
+                }
+                updateHeaderUI();
+            });
+
+            loadMessages();
+            markMessagesAsSeen(); // ဝင်လာတာနဲ့ သူများစာတွေကို Seen လုပ်မယ်
         } else {
-            // Login မဝင်ရသေးရင် Login ခလုတ်ကို ပြမယ်
             document.getElementById('loginScreen').style.display = 'flex';
             document.getElementById('chatInterface').style.display = 'none';
         }
     });
 
-    // Google Login Function
     function googleLogin() {
-        const provider = new firebase.auth.GoogleAuthProvider();
-        auth.signInWithPopup(provider).catch((error) => {
-            console.error(error);
-            alert("Login Error: " + error.message);
-        });
+        auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(alert);
+    }
+    function logout() { auth.signOut(); }
+
+    function updateHeaderUI() {
+        document.getElementById('myDisplayPic').src = myCurrentAvatar;
+        document.getElementById('myName').innerText = currentUser.displayName;
     }
 
-    // Logout Function
-    function logout() {
-        auth.signOut();
+    // --- Profile Editing (Upload & Save) ---
+    function openEditModal() { document.getElementById('editModal').style.flex = 'flex'; document.getElementById('editModal').style.display = 'flex'; }
+    function closeEditModal() { document.getElementById('editModal').style.display = 'none'; }
+
+    function saveProfilePic() {
+        const file = document.getElementById('profileUpload').files[0];
+        if (!file) return alert("ပုံရွေးပါ");
+        
+        // 1MB Limit စစ်မယ် (Database မလေးအောင်)
+        if (file.size > 1000000) return alert("ပုံဆိုဒ် ကြီးလွန်းပါတယ်။ 1MB အောက် ပုံရွေးပါ။");
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const base64Img = e.target.result;
+            // Database မှာ သိမ်းမယ် ('users' collection သီးသန့်ဆောက်ပြီး)
+            db.collection('users').doc(currentUser.uid).set({
+                photo: base64Img
+            }, { merge: true }).then(() => {
+                myCurrentAvatar = base64Img;
+                updateHeaderUI();
+                closeEditModal();
+                alert("Profile ပုံ ပြောင်းလဲလိုက်ပါပြီ!");
+            });
+        }
+        reader.readAsDataURL(file);
     }
 
-    // --- Chat Logic ---
+    // --- Chat Logic & Read Receipts ---
 
     function loadMessages() {
         db.collection("chats").orderBy("timestamp", "asc").onSnapshot((snapshot) => {
@@ -155,18 +209,32 @@
                 const row = document.createElement("div");
                 row.className = `message-row ${isMe ? "my-row" : "other-row"}`;
 
-                // တစ်ဖက်သားရဲ့ ပုံနဲ့ နာမည်
+                // တစ်ဖက်လူပုံ (Data ထဲကပုံကို သုံးမယ်၊ မရှိရင် အလွတ်)
                 let avatarHtml = isMe ? "" : `<img src="${data.photo || 'https://via.placeholder.com/30'}" class="avatar">`;
+
+                // Status Ticks (Sent vs Seen)
+                // status မရှိရင် 'sent' လို့ သတ်မှတ်
+                const status = data.status || 'sent';
+                const tickHtml = (status === 'seen') 
+                    ? `<span class="ticks tick-seen">✓✓</span>` // Seen (Blue)
+                    : `<span class="ticks tick-sent">✓</span>`;  // Sent (Grey)
 
                 let content = "";
                 if (data.image) content += `<img src="${data.image}">`;
                 if (data.text) content += `<div>${data.text}</div>`;
 
+                // Time Format
+                const date = data.timestamp ? data.timestamp.toDate() : new Date();
+                const timeStr = date.getHours() + ":" + (date.getMinutes()<10?'0':'') + date.getMinutes();
+
                 row.innerHTML = `
                     ${avatarHtml}
                     <div class="bubble-container">
-                        <span class="sender-name">${data.name || 'Unknown'}</span>
                         <div class="bubble ${isMe ? "my-bubble" : "other-bubble"}">${content}</div>
+                        <div class="msg-info">
+                            <span class="time">${timeStr}</span>
+                            ${tickHtml}
+                        </div>
                     </div>
                 `;
                 list.appendChild(row);
@@ -175,11 +243,23 @@
         });
     }
 
-    function sendMsg() {
-        if (!currentUser) return; // Login မဝင်ထားရင် မပို့ဘူး
+    // သူများစာတွေကို 'seen' လို့ ပြောင်းပေးတဲ့ Function
+    function markMessagesAsSeen() {
+        // ကိုယ်မဟုတ်တဲ့စာတွေ၊ status က 'sent' ဖြစ်နေတာတွေကို ရှာမယ်
+        db.collection("chats")
+          .where("uid", "!=", currentUser.uid)
+          .where("status", "==", "sent")
+          .onSnapshot(snapshot => {
+              snapshot.forEach(doc => {
+                  // တစ်ခုချင်းစီကို 'seen' လို့ update လုပ်မယ်
+                  doc.ref.update({ status: 'seen' });
+              });
+          });
+    }
 
+    function sendMsg() {
         const input = document.getElementById("msgInput");
-        const fileInput = document.getElementById("fileInput");
+        const fileInput = document.getElementById("imgUpload");
         const text = input.value.trim();
         const file = fileInput.files[0];
 
@@ -202,9 +282,10 @@
         db.collection("chats").add({
             text: text,
             image: img,
-            uid: currentUser.uid,          // User ID
-            name: currentUser.displayName, // Google Name
-            photo: currentUser.photoURL,   // Google Photo
+            uid: currentUser.uid,
+            name: currentUser.displayName,
+            photo: myCurrentAvatar, // ကိုယ့်ရဲ့ Profile ပုံအသစ်ကို သုံးမယ်
+            status: 'sent',         // အစမှာ 'sent' အနေနဲ့ ပို့မယ်
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
     }
