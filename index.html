@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mini Social App</title>
+    <title>Social Chat App</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     
@@ -13,12 +13,12 @@
 
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: 'Roboto', sans-serif; background-color: #f0f2f5; margin: 0; padding-bottom: 60px; /* For Bottom Nav */ }
+        body { font-family: 'Roboto', sans-serif; background-color: #f0f2f5; margin: 0; padding-bottom: 60px; height: 100dvh; overflow: hidden; }
 
         /* --- Loading Overlay --- */
         #loadingOverlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255, 255, 255, 0.8); z-index: 999;
+            background: rgba(255, 255, 255, 0.8); z-index: 2000;
             justify-content: center; align-items: center; flex-direction: column;
         }
         .spinner {
@@ -30,31 +30,33 @@
         /* --- Login Screen --- */
         #loginScreen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: white; z-index: 100;
+            background: white; z-index: 1000;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
         }
-        .app-logo { font-size: 40px; color: #1877f2; font-weight: bold; margin-bottom: 20px; }
         .login-btn {
             background: #1877f2; color: white; border: none; padding: 12px 30px; 
             border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer;
         }
 
-        /* --- Main Interface --- */
-        #appInterface { display: none; }
+        /* --- Main App Container --- */
+        #appInterface { display: none; height: 100%; flex-direction: column; }
 
-        /* Top Header */
+        /* Header */
         .header {
-            background: white; padding: 10px 15px; position: sticky; top: 0; z-index: 50;
+            background: white; padding: 10px 15px; flex-shrink: 0;
             box-shadow: 0 1px 2px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center;
         }
-        .header h1 { margin: 0; color: #1877f2; font-size: 24px; }
+        .header h1 { margin: 0; color: #1877f2; font-size: 22px; }
 
-        /* Tab Pages */
-        .tab-content { display: none; padding: 10px; }
+        /* Scrollable Content Area */
+        .content-area { flex: 1; overflow-y: auto; padding-bottom: 20px; }
+
+        /* Tabs */
+        .tab-content { display: none; }
         .active-tab { display: block; }
 
-        /* --- Create Post Box --- */
-        .create-post { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); margin-bottom: 15px; }
+        /* --- Create Post --- */
+        .create-post { background: white; padding: 15px; margin-bottom: 10px; }
         .cp-top { display: flex; gap: 10px; margin-bottom: 10px; }
         .cp-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: #ddd; }
         .cp-input { 
@@ -62,51 +64,71 @@
             padding: 10px 15px; outline: none; font-size: 15px; 
         }
         .cp-actions { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #eee; padding-top: 10px; }
-        .photo-btn { color: #45bd62; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 5px; }
         .post-btn { background: #1877f2; color: white; border: none; padding: 6px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; }
-        .post-btn:disabled { background: #ccc; }
 
         /* --- Feed Posts --- */
-        .post-card { background: white; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); margin-bottom: 15px; overflow: hidden; }
-        .pc-header { padding: 10px 15px; display: flex; align-items: center; gap: 10px; }
+        .post-card { background: white; margin-bottom: 10px; padding-bottom: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .pc-header { padding: 10px 15px; display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+        .pc-user { display: flex; align-items: center; gap: 10px; cursor: pointer; } /* Clickable */
         .pc-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
-        .pc-info h4 { margin: 0; font-size: 15px; display: flex; align-items: center; gap: 4px; }
-        .admin-badge { color: #1877f2; font-size: 14px; } /* Blue Tick */
+        .pc-info h4 { margin: 0; font-size: 15px; }
+        .admin-badge { color: #1877f2; margin-left: 4px; } 
         .pc-info span { font-size: 12px; color: #65676b; }
         
+        .delete-btn { color: #65676b; cursor: pointer; font-size: 18px; padding: 5px; }
+        .delete-btn:hover { color: red; }
+
         .pc-content { padding: 0 15px 10px; font-size: 15px; }
         .pc-image { width: 100%; display: block; max-height: 400px; object-fit: cover; margin-top: 5px; }
         
-        .pc-footer { border-top: 1px solid #eee; padding: 10px; display: flex; align-items: center; gap: 5px; cursor: pointer; color: #65676b; font-weight: 500; }
-        .heart-icon { font-size: 20px; }
-        .liked { color: #e41e3f; } /* Red Heart */
+        /* --- People List --- */
+        .person-row {
+            display: flex; align-items: center; padding: 15px; background: white; border-bottom: 1px solid #eee; cursor: pointer;
+        }
+        .person-row:active { background-color: #f0f2f5; }
+        .person-avatar { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; margin-right: 15px; }
+        .person-name { font-weight: bold; font-size: 16px; color: #050505; }
+        .chat-icon { margin-left: auto; color: #1877f2; font-size: 24px; }
 
-        /* --- Profile Tab --- */
-        .profile-card { background: white; border-radius: 8px; padding: 20px; text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-        .big-avatar { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #1877f2; margin-bottom: 10px; }
-        .edit-input { padding: 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 16px; width: 80%; text-align: center; margin-bottom: 10px; }
-        .save-btn { background: #42b72a; color: white; border: none; padding: 8px 20px; border-radius: 5px; font-size: 14px; cursor: pointer; }
-        .logout-link { display: block; margin-top: 20px; color: #e41e3f; text-decoration: none; font-size: 14px; cursor: pointer; }
+        /* --- Chat Overlay (Private Message) --- */
+        #chatOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: white; z-index: 1500; display: none; flex-direction: column;
+        }
+        .chat-header {
+            padding: 10px 15px; border-bottom: 1px solid #ddd; display: flex; align-items: center; gap: 10px; background: white;
+        }
+        .back-btn { font-size: 24px; cursor: pointer; border: none; background: none; }
+        .chat-messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; background: #eef1f5; }
+        
+        .msg-bubble { padding: 8px 14px; border-radius: 18px; max-width: 75%; font-size: 15px; word-wrap: break-word; }
+        .msg-me { background: #1877f2; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+        .msg-other { background: white; color: black; align-self: flex-start; border-bottom-left-radius: 4px; }
 
+        .chat-input-bar { padding: 10px; border-top: 1px solid #eee; display: flex; gap: 10px; }
+        .chat-input { flex: 1; padding: 10px; border-radius: 20px; border: 1px solid #ddd; outline: none; }
+
+        /* --- Profile --- */
+        .profile-card { background: white; padding: 20px; text-align: center; margin-top: 20px; }
+        .big-avatar { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; }
+        
         /* --- Bottom Nav --- */
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; width: 100%; background: white; height: 55px;
             display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #ddd; z-index: 100;
         }
-        .nav-item { font-size: 24px; color: #65676b; cursor: pointer; }
+        .nav-item { font-size: 24px; color: #65676b; cursor: pointer; display: flex; flex-direction: column; align-items: center; }
+        .nav-label { font-size: 10px; margin-top: 2px; }
         .nav-active { color: #1877f2; }
 
     </style>
 </head>
 <body>
 
-    <div id="loadingOverlay">
-        <div class="spinner"></div>
-        <p style="margin-top:10px; color:#555;">Processing...</p>
-    </div>
+    <div id="loadingOverlay"><div class="spinner"></div></div>
 
     <div id="loginScreen">
-        <div class="app-logo">Social App</div>
+        <h1 style="color:#1877f2; margin-bottom:20px;">My Social</h1>
         <button class="login-btn" onclick="googleLogin()">Login with Google</button>
     </div>
 
@@ -114,52 +136,76 @@
         
         <div class="header">
             <h1>Social</h1>
-            <img id="headerAvatar" src="" style="width:30px; height:30px; border-radius:50%;" onclick="switchTab('profile')">
+            <img id="headerAvatar" src="" style="width:30px; height:30px; border-radius:50%;">
         </div>
 
-        <div id="homeTab" class="tab-content active-tab">
-            <div class="create-post">
-                <div class="cp-top">
-                    <img id="postAvatar" class="cp-avatar" src="">
-                    <input type="text" id="postInput" class="cp-input" placeholder="ဘာတွေ တွေးနေလဲ...">
+        <div class="content-area">
+            
+            <div id="homeTab" class="tab-content active-tab">
+                <div class="create-post">
+                    <div class="cp-top">
+                        <img id="postAvatar" class="cp-avatar" src="">
+                        <input type="text" id="postInput" class="cp-input" placeholder="ဘာတွေ တွေးနေလဲ...">
+                    </div>
+                    <img id="previewImg" style="width:100%; border-radius:8px; display:none; margin-bottom:10px;">
+                    <div class="cp-actions">
+                        <label for="postImg" style="color:#45bd62; font-weight:bold; cursor:pointer;">📷 Photo</label>
+                        <input type="file" id="postImg" accept="image/*" style="display:none" onchange="previewFile()">
+                        <button class="post-btn" onclick="submitPost()">Post</button>
+                    </div>
                 </div>
-                <img id="previewImg" style="width:100%; border-radius:8px; margin-bottom:10px; display:none;">
-                <div class="cp-actions">
-                    <label for="postImg" class="photo-btn">📷 Photo</label>
-                    <input type="file" id="postImg" accept="image/*" style="display:none" onchange="previewFile()">
-                    <button class="post-btn" onclick="submitPost()">Post</button>
+                <div id="feedContainer"></div>
+            </div>
+
+            <div id="peopleTab" class="tab-content">
+                <div id="peopleList" style="padding-bottom:20px;"></div>
+            </div>
+
+            <div id="profileTab" class="tab-content">
+                <div class="profile-card">
+                    <img id="profilePic" class="big-avatar" src="">
+                    <h2 id="profileName">User Name</h2>
+                    <br>
+                    <label style="color:#1877f2; cursor:pointer; font-weight:bold;">
+                        [ Change Photo ]
+                        <input type="file" id="newProfileImg" accept="image/*" style="display:none;" onchange="uploadProfilePic()">
+                    </label>
+                    <br><br>
+                    <button onclick="logout()" style="background:#ddd; border:none; padding:10px 20px; border-radius:5px; cursor:pointer;">Logout</button>
                 </div>
             </div>
 
-            <div id="feedContainer"></div>
-        </div>
-
-        <div id="profileTab" class="tab-content">
-            <div class="profile-card">
-                <img id="profilePic" class="big-avatar" src="">
-                <br>
-                <label style="font-size:12px; color:#1877f2; cursor:pointer;">
-                    Change Photo
-                    <input type="file" id="newProfileImg" accept="image/*" style="display:none;" onchange="uploadProfilePic()">
-                </label>
-                
-                <h3 style="margin:15px 0 5px 0;">Display Name</h3>
-                <input type="text" id="editNameInput" class="edit-input">
-                <br>
-                <button class="save-btn" onclick="updateName()">Save Name</button>
-
-                <div class="logout-link" onclick="logout()">Logout</div>
-            </div>
         </div>
 
         <div class="bottom-nav">
-            <div class="nav-item nav-active" onclick="switchTab('home')">🏠</div> <div class="nav-item" onclick="switchTab('profile')">👤</div> </div>
+            <div class="nav-item nav-active" onclick="switchTab('home')">
+                <span>🏠</span><span class="nav-label">Home</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('people')">
+                <span>👥</span><span class="nav-label">Friends</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('profile')">
+                <span>👤</span><span class="nav-label">Profile</span>
+            </div>
+        </div>
+    </div>
 
+    <div id="chatOverlay">
+        <div class="chat-header">
+            <button class="back-btn" onclick="closeChat()">←</button>
+            <img id="chatPartnerPic" src="" style="width:35px; height:35px; border-radius:50%;">
+            <h3 id="chatPartnerName" style="margin:0; font-size:16px;">User</h3>
+        </div>
+        <div class="chat-messages" id="privateMsgList"></div>
+        <div class="chat-input-bar">
+            <input type="text" id="privateInput" class="chat-input" placeholder="စာရိုက်ပါ...">
+            <button onclick="sendPrivateMsg()" style="background:none; border:none; font-size:24px; color:#1877f2;">➤</button>
+        </div>
     </div>
 
 <script>
     // --------------------------------------------------------------
-    // ⚠️ Firebase Config & ADMIN Setup
+    // ⚠️ CONFIGURATION
     // --------------------------------------------------------------
     const firebaseConfig = {
   apiKey: "AIzaSyCUteIjOOPxPYrCutDSo9t0cVtLqnGTWxU",
@@ -169,8 +215,7 @@
   messagingSenderId: "582814616396",
   appId: "1:582814616396:web:251660e2a50635bc70dde9"
 };
-    
-    // 🔴 ဒီနေရာမှာ Admin ဖြစ်စေချင်တဲ့ Gmail ကို ရိုက်ထည့်ပါ
+   
     const ADMIN_EMAIL = "mmtintaungkhaing@gmail.com"; 
     // --------------------------------------------------------------
 
@@ -180,35 +225,35 @@
     
     let currentUser = null;
     let myUserData = {};
+    let currentChatPartner = null; // ဘယ်သူနဲ့ စကားပြောနေလဲ
+    let activeConversationId = null; 
 
-    // --- Loading Control ---
-    function showLoading(show) {
-        document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
-    }
+    // --- Loading ---
+    function showLoading(show) { document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none'; }
 
     // --- Auth Logic ---
     auth.onAuthStateChanged((user) => {
         if (user) {
             currentUser = user;
             document.getElementById('loginScreen').style.display = 'none';
-            document.getElementById('appInterface').style.display = 'block';
+            document.getElementById('appInterface').style.display = 'flex';
             
-            // Get or Create User Data in Firestore
             const userRef = db.collection('users').doc(user.uid);
             userRef.onSnapshot((doc) => {
                 if(doc.exists) {
                     myUserData = doc.data();
                 } else {
-                    // First time setup
                     myUserData = {
                         name: user.displayName,
                         photo: user.photoURL,
                         email: user.email,
-                        isAdmin: (user.email === ADMIN_EMAIL) // Admin Check
+                        uid: user.uid,
+                        isAdmin: (user.email === ADMIN_EMAIL)
                     };
                     userRef.set(myUserData);
                 }
                 updateUI();
+                loadPeople(); // Load Friends List
             });
 
             loadFeed();
@@ -225,63 +270,27 @@
         document.getElementById('headerAvatar').src = myUserData.photo;
         document.getElementById('postAvatar').src = myUserData.photo;
         document.getElementById('profilePic').src = myUserData.photo;
-        document.getElementById('editNameInput').value = myUserData.name;
+        document.getElementById('profileName').innerText = myUserData.name;
     }
 
-    // --- Tabs Switching ---
+    // --- Tab Switching ---
     function switchTab(tabName) {
-        // Hide all
-        document.getElementById('homeTab').style.display = 'none';
-        document.getElementById('profileTab').style.display = 'none';
+        document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('nav-active'));
         
-        // Remove active color from nav
-        const navs = document.querySelectorAll('.nav-item');
-        navs[0].classList.remove('nav-active');
-        navs[1].classList.remove('nav-active');
-
-        // Show selected
         if(tabName === 'home') {
             document.getElementById('homeTab').style.display = 'block';
-            navs[0].classList.add('nav-active');
+            document.querySelectorAll('.nav-item')[0].classList.add('nav-active');
+        } else if (tabName === 'people') {
+            document.getElementById('peopleTab').style.display = 'block';
+            document.querySelectorAll('.nav-item')[1].classList.add('nav-active');
         } else {
             document.getElementById('profileTab').style.display = 'block';
-            navs[1].classList.add('nav-active');
+            document.querySelectorAll('.nav-item')[2].classList.add('nav-active');
         }
     }
 
-    // --- Profile & Name Editing ---
-    function updateName() {
-        const newName = document.getElementById('editNameInput').value;
-        if(!newName) return;
-        
-        showLoading(true);
-        db.collection('users').doc(currentUser.uid).update({ name: newName }).then(() => {
-            showLoading(false);
-            alert("နာမည်ပြောင်းလဲလိုက်ပါပြီ!");
-        });
-    }
-
-    function uploadProfilePic() {
-        const file = document.getElementById('newProfileImg').files[0];
-        if(!file) return;
-        
-        if (file.size > 1000000) return alert("File too large! Max 1MB.");
-
-        showLoading(true); // Loading စပြမည်
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const base64 = e.target.result;
-            db.collection('users').doc(currentUser.uid).update({ photo: base64 }).then(() => {
-                showLoading(false); // Loading ပြီးသွားပြီ
-                alert("Profile ပုံ ပြောင်းလဲပြီးပါပြီ!");
-            });
-        }
-        reader.readAsDataURL(file);
-    }
-
-    // --- Feed Logic (Create & View) ---
-    
-    // Preview Image before posting
+    // --- Feed Logic (Post & Delete) ---
     function previewFile() {
         const file = document.getElementById('postImg').files[0];
         const preview = document.getElementById('previewImg');
@@ -295,24 +304,20 @@
     function submitPost() {
         const text = document.getElementById('postInput').value;
         const file = document.getElementById('postImg').files[0];
-
         if(!text && !file) return;
 
         showLoading(true);
 
-        const savePostToDB = (imgData) => {
+        const savePost = (img) => {
             db.collection('posts').add({
-                text: text,
-                image: imgData,
+                text: text, image: img,
                 uid: currentUser.uid,
                 authorName: myUserData.name,
                 authorPhoto: myUserData.photo,
-                isAdmin: myUserData.isAdmin || false, // Save Admin Status with post
-                likes: [],
+                isAdmin: myUserData.isAdmin || false,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             }).then(() => {
                 showLoading(false);
-                // Clear inputs
                 document.getElementById('postInput').value = "";
                 document.getElementById('postImg').value = "";
                 document.getElementById('previewImg').style.display = 'none';
@@ -321,10 +326,17 @@
 
         if(file) {
             const reader = new FileReader();
-            reader.onload = (e) => savePostToDB(e.target.result);
+            reader.onload = (e) => savePost(e.target.result);
             reader.readAsDataURL(file);
-        } else {
-            savePostToDB(null);
+        } else { savePost(null); }
+    }
+
+    // (၂) Post ဖျက်ခြင်း Function
+    function deletePost(postId) {
+        if(confirm("ဒီ Post ကို ဖျက်မှာ သေချာလား?")) {
+            db.collection('posts').doc(postId).delete().then(() => {
+                // အလိုအလျောက် ပျောက်သွားပါမယ်
+            });
         }
     }
 
@@ -335,35 +347,29 @@
 
             snapshot.forEach(doc => {
                 const post = doc.data();
-                const postId = doc.id;
+                const badge = post.isAdmin ? `<span class="admin-badge">✓</span>` : ``;
                 
-                // Admin Badge HTML logic
-                const badgeHtml = post.isAdmin ? `<span class="admin-badge">✓</span>` : ``;
-
-                // Check if I liked this
-                const isLiked = post.likes && post.likes.includes(currentUser.uid);
-                const heartClass = isLiked ? "liked" : "";
-                const likeCount = post.likes ? post.likes.length : 0;
-
-                let contentHtml = "";
-                if(post.text) contentHtml += `<p>${post.text}</p>`;
-                if(post.image) contentHtml += `<img src="${post.image}" class="pc-image">`;
+                // (၂) ဖျက်ခွင့် ရှိမရှိ စစ်ဆေးခြင်း (ကိုယ်ပိုင် Post လား? Admin လား?)
+                let deleteBtn = "";
+                if (currentUser.uid === post.uid || myUserData.isAdmin) {
+                    deleteBtn = `<span class="delete-btn" onclick="deletePost('${doc.id}')">🗑️</span>`;
+                }
 
                 const html = `
                     <div class="post-card">
                         <div class="pc-header">
-                            <img src="${post.authorPhoto}" class="pc-avatar">
-                            <div class="pc-info">
-                                <h4>${post.authorName} ${badgeHtml}</h4>
-                                <span>${post.timestamp ? new Date(post.timestamp.toDate()).toLocaleTimeString() : 'Just now'}</span>
+                            <div class="pc-user" onclick="openChat('${post.uid}', '${post.authorName}', '${post.authorPhoto}')">
+                                <img src="${post.authorPhoto}" class="pc-avatar">
+                                <div class="pc-info">
+                                    <h4>${post.authorName} ${badge}</h4>
+                                    <span>${post.timestamp ? new Date(post.timestamp.toDate()).toLocaleTimeString() : ''}</span>
+                                </div>
                             </div>
+                            ${deleteBtn}
                         </div>
                         <div class="pc-content">
-                            ${contentHtml}
-                        </div>
-                        <div class="pc-footer" onclick="toggleLike('${postId}', ${isLiked})">
-                            <span class="heart-icon ${heartClass}">♥</span> 
-                            <span>${likeCount} Likes</span>
+                            <p>${post.text || ''}</p>
+                            ${post.image ? `<img src="${post.image}" class="pc-image">` : ''}
                         </div>
                     </div>
                 `;
@@ -372,15 +378,101 @@
         });
     }
 
-    function toggleLike(postId, isLiked) {
-        const postRef = db.collection('posts').doc(postId);
-        if(isLiked) {
-            postRef.update({ likes: firebase.firestore.FieldValue.arrayRemove(currentUser.uid) });
-        } else {
-            postRef.update({ likes: firebase.firestore.FieldValue.arrayUnion(currentUser.uid) });
-        }
+    // --- (၁) Friends List Logic ---
+    function loadPeople() {
+        // App သုံးဖူးသမျှ လူတွေကို ဆွဲထုတ်ပြမယ်
+        db.collection('users').onSnapshot(snapshot => {
+            const list = document.getElementById('peopleList');
+            list.innerHTML = "";
+            
+            snapshot.forEach(doc => {
+                const user = doc.data();
+                if(user.uid === currentUser.uid) return; // ကိုယ့်ကိုယ်ကို မပြဘူး
+
+                const html = `
+                    <div class="person-row" onclick="openChat('${user.uid}', '${user.name}', '${user.photo}')">
+                        <img src="${user.photo}" class="person-avatar">
+                        <span class="person-name">${user.name}</span>
+                        <span class="chat-icon">💬</span>
+                    </div>
+                `;
+                list.innerHTML += html;
+            });
+        });
     }
 
+    // --- (၃) Chat Logic (Private) ---
+    function openChat(targetUid, name, photo) {
+        currentChatPartner = { uid: targetUid, name: name, photo: photo };
+        
+        // Chat ID ဖန်တီးခြင်း (UID နှစ်ခုကို စီပြီး ပေါင်းမယ် -> unique id ရမယ်)
+        const ids = [currentUser.uid, targetUid].sort();
+        activeConversationId = ids.join("_");
+
+        // UI ပြင်ဆင်ခြင်း
+        document.getElementById('chatPartnerName').innerText = name;
+        document.getElementById('chatPartnerPic').src = photo;
+        document.getElementById('chatOverlay').style.display = 'flex';
+        
+        loadPrivateMessages();
+    }
+
+    function closeChat() {
+        document.getElementById('chatOverlay').style.display = 'none';
+        activeConversationId = null;
+    }
+
+    function loadPrivateMessages() {
+        if(!activeConversationId) return;
+
+        db.collection('direct_messages')
+          .where('conversationId', '==', activeConversationId)
+          .orderBy('timestamp', 'asc')
+          .onSnapshot(snapshot => {
+              const list = document.getElementById('privateMsgList');
+              list.innerHTML = "";
+              
+              snapshot.forEach(doc => {
+                  const data = doc.data();
+                  const isMe = data.senderId === currentUser.uid;
+                  
+                  const html = `<div class="msg-bubble ${isMe ? 'msg-me' : 'msg-other'}">${data.text}</div>`;
+                  list.innerHTML += html;
+              });
+              list.scrollTop = list.scrollHeight;
+          });
+    }
+
+    function sendPrivateMsg() {
+        const input = document.getElementById('privateInput');
+        const text = input.value.trim();
+        if(!text || !activeConversationId) return;
+
+        db.collection('direct_messages').add({
+            conversationId: activeConversationId,
+            text: text,
+            senderId: currentUser.uid,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        input.value = "";
+    }
+
+    // Update Profile Photo
+    function uploadProfilePic() {
+        const file = document.getElementById('newProfileImg').files[0];
+        if(!file) return;
+        if(file.size > 1000000) return alert("File too large!");
+
+        showLoading(true);
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            db.collection('users').doc(currentUser.uid).update({ photo: e.target.result }).then(() => {
+                showLoading(false);
+                alert("Updated!");
+            });
+        }
+        reader.readAsDataURL(file);
+    }
 </script>
 </body>
 </html>
