@@ -127,7 +127,7 @@
         .nav-indicator { width: 4px; height: 4px; background: var(--primary); border-radius: 50%; position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); display: none; }
         .nav-item.active .nav-indicator { display: block; }
         
-        /* NEW: Notification Badge Style */
+        /* Notification Badge Style */
         .nav-badge { 
             width: 10px; height: 10px; background: #FF4D4F; border-radius: 50%; 
             position: absolute; top: 10px; right: 10px; border: 2px solid var(--nav-bg);
@@ -403,10 +403,10 @@
     let myData = {};
     let overlayMode = ''; 
     let activeTargetId = null; 
-    let chatReceiverId = null; // NEW: To store who we are chatting with
+    let chatReceiverId = null;
     let unsubOverlay = null;
     let feedUnsubscribe = null;
-    let unreadListener = null; // NEW: For notification listener
+    let unreadListener = null;
     let editingPostId = null;
 
     // --- THEME MANAGEMENT ---
@@ -479,7 +479,7 @@
 
                     updateUI();
                     loadFriends();
-                    startNotificationListener(); // NEW: Start listening for messages
+                    startNotificationListener();
                 } else {
                     myData = { 
                         name: user.displayName, photo: user.photoURL, 
@@ -494,7 +494,7 @@
         } else {
             currentUser = null;
             myData = {};
-            if(unreadListener) unreadListener(); // Stop listening
+            if(unreadListener) unreadListener();
             document.getElementById('chatBadge').style.display = 'none';
 
             document.getElementById('loggedInCreateBox').style.display = 'none';
@@ -531,42 +531,51 @@
         }
     };
 
-    // --- NOTIFICATION SYSTEM (NEW) ---
+    // --- NOTIFICATION SYSTEM ---
     const startNotificationListener = () => {
         if(unreadListener) unreadListener();
-        // Listen for messages where I am the receiver and isRead is false
+        
+        console.log("🔔 Starting notification listener for:", currentUser.uid);
+        
         unreadListener = db.collection('messages')
             .where('receiverId', '==', currentUser.uid)
             .where('isRead', '==', false)
             .onSnapshot(snap => {
                 const badge = document.getElementById('chatBadge');
-                if(!snap.empty) {
+                console.log("📩 Unread messages:", snap.size);
+                
+                if(snap.size > 0) {
                     badge.style.display = 'block';
-                    // If currently chatting with this person, mark as read immediately
-                    if(overlayMode === 'chat' && chatReceiverId) {
-                         const incomingSender = snap.docs[0].data().sender;
-                         if(incomingSender === chatReceiverId) {
-                             markMessagesAsRead(incomingSender);
-                         }
-                    }
+                    console.log("✅ Showing notification badge");
                 } else {
                     badge.style.display = 'none';
+                    console.log("❌ Hiding notification badge");
                 }
+            }, error => {
+                console.error("Notification listener error:", error);
             });
     };
 
     const markMessagesAsRead = (senderId) => {
+        console.log("📭 Marking messages as read from:", senderId);
         db.collection('messages')
           .where('chatId', '==', [currentUser.uid, senderId].sort().join("_"))
           .where('receiverId', '==', currentUser.uid)
           .where('isRead', '==', false)
           .get()
           .then(snap => {
+              if(snap.empty) {
+                  console.log("No unread messages to mark");
+                  return;
+              }
+              
               const batch = db.batch();
               snap.forEach(doc => {
                   batch.update(doc.ref, { isRead: true });
               });
-              batch.commit();
+              batch.commit().then(() => {
+                  console.log(`✅ Marked ${snap.size} messages as read`);
+              });
           });
     };
 
@@ -730,21 +739,31 @@
     // --- OVERLAY (CHAT & COMMENTS) ---
     window.openOverlay = (mode, targetId, name = '') => {
         if(!currentUser) return showToast("Please Login First!");
+        
+        console.log(`🔓 Opening overlay: mode=${mode}, targetId=${targetId}, name=${name}`);
+        
         overlayMode = mode;
         const screen = document.getElementById('overlayScreen');
         const title = document.getElementById('overlayTitle');
         const body = document.getElementById('overlayBody');
         
         screen.style.display = 'flex';
-        title.innerText = mode === 'comment' ? "Comments" : name;
+        
+        if (mode === 'chat') {
+            chatReceiverId = targetId;
+            activeTargetId = [currentUser.uid, targetId].sort().join("_");
+            title.innerText = name || "Chat";
+            
+            // Mark messages as read when opening chat
+            markMessagesAsRead(targetId);
+        } else {
+            chatReceiverId = null;
+            activeTargetId = targetId; 
+            title.innerText = "Comments";
+        }
+        
         body.innerHTML = '<div style="text-align:center; padding:20px;">Loading...</div>';
         if(unsubOverlay) unsubOverlay();
-
-        if (mode === 'chat') {
-            activeTargetId = [currentUser.uid, targetId].sort().join("_");
-        } else {
-            activeTargetId = targetId; 
-        }
 
         const ref = mode === 'comment' 
             ? db.collection('comments').where('postId', '==', activeTargetId) 
@@ -752,17 +771,23 @@
 
         unsubOverlay = ref.onSnapshot(snap => {
             let list = [];
-            snap.forEach(d => list.push(d.data()));
+            snap.forEach(d => {
+                const data = d.data();
+                data.id = d.id;
+                list.push(data);
+            });
+            
             list.sort((a,b) => {
                 const tA = a.timestamp ? a.timestamp.toMillis() : Date.now();
                 const tB = b.timestamp ? b.timestamp.toMillis() : Date.now();
                 return tA - tB;
             });
             
-            if(list.length === 0) body.innerHTML = '<div style="text-align:center; color:var(--text-gray); margin-top:50px;">No messages yet.</div>';
-            else {
+            if(list.length === 0) {
+                body.innerHTML = '<div style="text-align:center; color:var(--text-gray); margin-top:50px;">No messages yet.</div>';
+            } else {
                 body.innerHTML = list.map(item => {
-                    const txt = makeLinksClickable(item.text);
+                    const txt = makeLinksClickable(item.text || '');
                     if (mode === 'comment') {
                         return `
                         <div style="display:flex; gap:10px; margin-bottom:15px;">
@@ -784,49 +809,84 @@
                 }).join('');
             }
             body.scrollTop = body.scrollHeight;
+        }, error => {
+            console.error("Overlay listener error:", error);
+            body.innerHTML = '<div style="text-align:center; color:red; margin-top:50px;">Error loading messages.</div>';
         });
     };
 
     window.closeOverlay = () => {
+        console.log("🔒 Closing overlay");
         document.getElementById('overlayScreen').style.display = 'none';
         if(unsubOverlay) unsubOverlay();
         overlayMode = '';
-        chatReceiverId = null; // Clear active receiver
+        chatReceiverId = null;
     };
 
-    window.handleOverlaySend = () => {
-        const txt = document.getElementById('overlayInput').value;
+    window.handleOverlaySend = async () => {
+        const txt = document.getElementById('overlayInput').value.trim();
         if(!txt) return;
+        
+        console.log(`📤 Sending ${overlayMode}:`, txt);
 
-        if(overlayMode === 'comment') {
-            const batch = db.batch();
-            batch.set(db.collection('comments').doc(), {
-                postId: activeTargetId, text: txt, uid: currentUser.uid,
-                userName: myData.name, userPhoto: myData.photo,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            batch.update(db.collection('posts').doc(activeTargetId), {
-                commentCount: firebase.firestore.FieldValue.increment(1)
-            });
-            batch.commit().catch(e => alert("Failed. You might be banned."));
-        } else {
-            // UPDATED: Chat Send with Notification support
-            db.collection('messages').add({
-                chatId: activeTargetId,
-                text: txt, 
-                sender: currentUser.uid,
-                receiverId: chatReceiverId, // NEW: Needed for notification
-                isRead: false, // NEW: Unread status
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            }).catch(e => alert("Message failed. You might be banned."));
+        try {
+            if(overlayMode === 'comment') {
+                const batch = db.batch();
+                batch.set(db.collection('comments').doc(), {
+                    postId: activeTargetId, 
+                    text: txt, 
+                    uid: currentUser.uid,
+                    userName: myData.name, 
+                    userPhoto: myData.photo,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                batch.update(db.collection('posts').doc(activeTargetId), {
+                    commentCount: firebase.firestore.FieldValue.increment(1)
+                });
+                await batch.commit();
+                console.log("✅ Comment sent");
+            } else {
+                if (!chatReceiverId) {
+                    console.error("❌ No chatReceiverId defined");
+                    return showToast("Cannot send message");
+                }
+                
+                console.log(`📨 Sending to: ${chatReceiverId}`);
+                
+                await db.collection('messages').add({
+                    chatId: activeTargetId,
+                    text: txt, 
+                    sender: currentUser.uid,
+                    receiverId: chatReceiverId,
+                    isRead: false,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                console.log("✅ Message sent successfully");
+            }
+            document.getElementById('overlayInput').value = "";
+        } catch(e) {
+            console.error("❌ Send failed:", e);
+            alert("Failed to send. You might be banned.");
         }
-        document.getElementById('overlayInput').value = "";
     };
     
     window.startChat = (uid, name) => {
-        chatReceiverId = uid; // Store who we are chatting with
+        console.log(`💬 Starting chat with: ${name} (${uid})`);
+        chatReceiverId = uid;
         openOverlay('chat', uid, name);
-        markMessagesAsRead(uid); // Mark as read when opening chat
+    };
+
+    window.sharePost = (text) => {
+        if (navigator.share) {
+            navigator.share({
+                title: 'Social69 Post',
+                text: text,
+                url: window.location.href
+            });
+        } else {
+            navigator.clipboard.writeText(text);
+            showToast("Copied to clipboard!");
+        }
     };
 
     // --- EDIT & PROFILE UTILS ---
@@ -837,22 +897,47 @@
         document.getElementById('editModalInput').value = currentText;
         document.getElementById('editModal').style.display = 'flex';
     };
-    window.closeEditModal = () => { document.getElementById('editModal').style.display = 'none'; editingPostId = null; };
+    
+    window.closeEditModal = () => { 
+        document.getElementById('editModal').style.display = 'none'; 
+        editingPostId = null; 
+    };
+    
     window.saveEditPost = () => {
         const newText = document.getElementById('editModalInput').value;
         if(editingPostId && newText) {
             db.collection('posts').doc(editingPostId).update({ text: newText })
-            .then(() => { closeEditModal(); showToast("Post updated!"); });
+            .then(() => { 
+                closeEditModal(); 
+                showToast("Post updated!"); 
+            });
         }
     };
+    
     window.saveName = () => {
-        db.collection('users').doc(currentUser.uid).update({ name: document.getElementById('editName').value }).then(() => showToast("Saved!"));
+        const newName = document.getElementById('editName').value.trim();
+        if(!newName) return;
+        
+        db.collection('users').doc(currentUser.uid).update({ 
+            name: newName 
+        }).then(() => {
+            showToast("Name updated!");
+            document.getElementById('profileNameDisplay').innerText = newName;
+        });
     };
+    
     window.uploadProfilePic = () => {
         const file = document.getElementById('newProfilePic').files[0];
         if(file) {
             const r = new FileReader();
-            r.onload = e => db.collection('users').doc(currentUser.uid).update({ photo: e.target.result });
+            r.onload = e => {
+                db.collection('users').doc(currentUser.uid).update({ 
+                    photo: e.target.result 
+                }).then(() => {
+                    showToast("Profile picture updated!");
+                    updateUI();
+                });
+            };
             r.readAsDataURL(file);
         }
     };
