@@ -121,9 +121,9 @@
             max-height: 400px; 
             border-radius: 12px; 
             margin-top: 10px; 
-            object-fit: cover; /* Changed to cover to fill space, or contain if preferred */
-            display: block; /* Important for rendering */
-            background-color: var(--input-bg);
+            object-fit: contain; /* Changed to contain to ensure full image visibility */
+            display: block; 
+            background-color: rgba(0,0,0,0.02);
         }
         
         .pc-stats { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-gray); margin: 15px 0 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border-color); }
@@ -171,7 +171,7 @@
         .bubble-other .bubble-name { color: var(--text-gray); }
 
         /* --- Friend List Item --- */
-        .friend-card { background: var(--bg-card); padding: 15px; border-radius: 15px; display: flex; align-items: center; gap: 15px; margin-bottom: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); transition: background 0.2s; }
+        .friend-card { background: var(--bg-card); padding: 15px; border-radius: 15px; display: flex; align-items: center; gap: 15px; margin-bottom: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); transition: background 0.2s; cursor:pointer;}
         .friend-card:active { background: var(--input-bg); }
         
         /* --- Profile Styles --- */
@@ -761,7 +761,11 @@
         const file = document.getElementById('postFile').files[0];
         if(file) {
             const r = new FileReader();
-            r.onload = e => { document.getElementById('previewImg').src = e.target.result; document.getElementById('previewImg').style.display = 'block'; }
+            r.onload = e => { 
+                const img = document.getElementById('previewImg');
+                img.src = e.target.result; 
+                img.style.display = 'block'; 
+            }
             r.readAsDataURL(file);
         }
     };
@@ -769,7 +773,9 @@
     const submitPost = async () => {
         if(!currentUser) return showToast("Please Login First!");
         const text = document.getElementById('postInput').value;
-        const img = document.getElementById('previewImg').style.display === 'block' ? document.getElementById('previewImg').src : null;
+        const imgEl = document.getElementById('previewImg');
+        const img = imgEl.style.display === 'block' ? imgEl.src : null;
+        
         if(!text && !img) return;
 
         try {
@@ -781,11 +787,12 @@
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
             document.getElementById('postInput').value = "";
-            document.getElementById('previewImg').style.display = 'none';
-            document.getElementById('previewImg').src = "";
+            imgEl.style.display = 'none';
+            imgEl.src = "";
             showToast("Post Sent!");
         } catch(e) {
-            alert("Error: You might be banned or restricted.");
+            console.error(e);
+            alert("Error sending post. You might be restricted.");
         }
     };
 
@@ -818,6 +825,7 @@
                         timeDisplay = date.toLocaleDateString() + " " + date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
                     }
                     const displayText = makeLinksClickable(p.text || '');
+                    const plainText = (p.text || '').replace(/"/g, '&quot;');
                     
                     const liveName = (userCache[p.uid]?.name) || p.authorName;
                     const livePhoto = (userCache[p.uid]?.photo) || p.authorPhoto;
