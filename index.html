@@ -613,7 +613,6 @@
     // --- AUTH ---
     auth.onAuthStateChanged(user => {
         if (user) {
-            // 🔥 Correctly sync myData on every snapshot
             db.collection('users').doc(user.uid).onSnapshot(doc => {
                 if(doc.exists) {
                     const data = doc.data();
@@ -624,17 +623,28 @@
                         return;
                     }
                     currentUser = user;
-                    myData = data; // Always keep myData fresh
+                    // 🔥 FIX: Ensure existing fields are prioritized over defaults
+                    myData = { 
+                        name: data.name || user.displayName, 
+                        photo: data.photo || user.photoURL, 
+                        uid: user.uid, 
+                        email: user.email, 
+                        isAdmin: (user.email === ADMIN_EMAIL),
+                        isBanned: data.isBanned || false,
+                        bio: data.bio || "Hello World",
+                        website: data.website || ""
+                    };
 
                     document.getElementById('loggedInCreateBox').style.display = 'block';
                     document.getElementById('guestFeedBanner').style.display = 'none';
                     document.getElementById('profile-guest-view').style.display = 'none'; 
                     document.getElementById('profile-user-view').style.display = 'block'; 
 
-                    updateUI(); // Refresh UI on any data change
+                    updateUI(); 
                     loadFriends();
                     startNotificationListener();
                 } else {
+                    // Only run this if the document DOES NOT exist
                     myData = { 
                         name: user.displayName, photo: user.photoURL, 
                         uid: user.uid, email: user.email, 
@@ -676,7 +686,6 @@
         });
         document.getElementById('profileNameDisplay').innerText = myData.name;
         
-        // 🔥 Use 'myData' which is now synced by snapshot
         document.getElementById('profileBio').innerText = myData.bio || 'No bio yet';
         
         const webEl = document.getElementById('profileWebsite');
@@ -1088,7 +1097,6 @@
     // 🔥 PROFILE EDIT MODAL LOGIC
     window.openProfileModal = () => {
         if(!currentUser) return showToast("Login first!");
-        // Use myData directly to ensure latest values are shown
         document.getElementById('modalProfileThumb').src = myData.photo || 'https://via.placeholder.com/100';
         document.getElementById('modalEditName').value = myData.name;
         document.getElementById('modalEditBio').value = myData.bio || "";
@@ -1104,8 +1112,28 @@
     window.previewProfileModalPic = () => {
         const file = document.getElementById('modalNewProfilePic').files[0];
         if(file) {
+            // 🔥 AUTOMATIC IMAGE RESIZING (Fixes Large Image Save Error)
             const r = new FileReader();
-            r.onload = e => { document.getElementById('modalProfileThumb').src = e.target.result; }
+            r.onload = e => { 
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Resize logic: Max width 400px
+                    const MAX_WIDTH = 400;
+                    const scaleSize = MAX_WIDTH / img.width;
+                    canvas.width = MAX_WIDTH;
+                    canvas.height = img.height * scaleSize;
+
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    
+                    // Convert to compressed JPEG (0.7 quality)
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                    document.getElementById('modalProfileThumb').src = dataUrl;
+                };
+            }
             r.readAsDataURL(file);
         }
     };
@@ -1124,7 +1152,7 @@
             updateData.photo = newPhotoSrc;
         }
 
-        // 🔥 FIX: Ensure we merge so fields are created if missing
+        // 🔥 FIX: Use merge:true to ensure other fields are not wiped
         db.collection('users').doc(currentUser.uid).set(updateData, { merge: true }).then(() => {
             showToast("Profile Updated!");
             // Manually update local myData just in case snapshot lags
@@ -1134,29 +1162,26 @@
             closeProfileModal();
         }).catch(err => {
             console.error(err);
-            showToast("Error updating profile");
+            alert("Error saving profile. Image might still be too large.");
         });
     };
 
-    // 🔥 NEW: View User Profile Dialog Logic
+    // 🔥 VIEW USER MODAL
     window.viewUserProfile = (uid) => {
         if (!currentUser) return showToast("Login to view profiles");
         if (uid === currentUser.uid) return openProfileModal();
 
-        // Try to get from cache first, but fetch fresh data to show latest Bio
         const cachedUser = userCache[uid] || {};
         
-        // Setup initial view
         document.getElementById('vu-pic').src = cachedUser.photo || 'https://via.placeholder.com/100';
         document.getElementById('vu-name').innerText = cachedUser.name || 'User';
         document.getElementById('vu-bio').innerText = "Loading...";
         document.getElementById('vu-web').innerHTML = "";
         
-        // Fetch fresh data
         db.collection('users').doc(uid).get().then(doc => {
             if(doc.exists) {
                 const u = doc.data();
-                userCache[uid] = u; // update cache
+                userCache[uid] = u; 
                 document.getElementById('vu-pic').src = u.photo;
                 document.getElementById('vu-name').innerText = u.name;
                 document.getElementById('vu-bio').innerText = u.bio || "No bio available";
@@ -1167,7 +1192,6 @@
                     document.getElementById('vu-web').innerText = "";
                 }
                 
-                // Update Chat Button Action
                 const btn = document.getElementById('vu-chat-btn');
                 btn.onclick = () => {
                     document.getElementById('viewUserModal').style.display = 'none';
