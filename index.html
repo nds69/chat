@@ -5,11 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Social69</title>
     
+    <!-- Firebase SDK (v8.10.0) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script> 
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- FontAwesome Icons (More Stable) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
         /* --- Theme Variables --- */
@@ -41,8 +43,7 @@
             --nav-bg: #1E1E1E;
         }
 
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; user-select: none; }
-        
+        /* Prevent Selection */
         body { 
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
             background-color: var(--bg-body); 
@@ -50,6 +51,7 @@
             display: flex; flex-direction: column; overflow: hidden;
             color: var(--text-main);
             transition: background-color 0.3s, color 0.3s;
+            -webkit-user-select: none; user-select: none;
         }
 
         /* --- Animations --- */
@@ -126,13 +128,6 @@
         .nav-item.active { color: var(--primary); background: rgba(108, 93, 211, 0.1); transform: translateY(-5px); }
         .nav-indicator { width: 4px; height: 4px; background: var(--primary); border-radius: 50%; position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); display: none; }
         .nav-item.active .nav-indicator { display: block; }
-        
-        /* NEW: Notification Badge Style */
-        .nav-badge { 
-            width: 10px; height: 10px; background: #FF4D4F; border-radius: 50%; 
-            position: absolute; top: 10px; right: 10px; border: 2px solid var(--nav-bg);
-            display: none; z-index: 10;
-        }
 
         /* --- Comments Overlay --- */
         .overlay-screen { position: fixed; inset: 0; background: var(--bg-card); z-index: 3000; display: none; flex-direction: column; animation: fadeIn 0.2s; color: var(--text-main); }
@@ -159,87 +154,38 @@
         .dark-mode-toggle { position: absolute; top: 15px; right: 15px; background: var(--input-bg); padding: 8px; border-radius: 50%; cursor: pointer; color: var(--text-main); }
         
         /* --- GUEST CARD LAYOUT --- */
-        #profile-guest-view {
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            width: 100%;
-            padding: 20px;
-        }
-
-        .guest-welcome-card {
-            background: linear-gradient(135deg, var(--primary), var(--primary-light));
-            color: white;
-            border-radius: 25px;
-            padding: 40px 30px;
-            text-align: center;
-            box-shadow: 0 10px 40px rgba(108, 93, 211, 0.4);
-            width: 100%;
-            max-width: 350px;
-            margin: 0 auto;
-        }
+        #profile-guest-view { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; padding: 20px; }
+        .guest-welcome-card { background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: white; border-radius: 25px; padding: 40px 30px; text-align: center; box-shadow: 0 10px 40px rgba(108, 93, 211, 0.4); width: 100%; max-width: 350px; margin: 0 auto; }
         .guest-icon { font-size: 60px; margin-bottom: 15px; }
         .guest-title { font-size: 24px; font-weight: 800; margin-bottom: 10px; }
         .guest-desc { font-size: 14px; opacity: 0.9; margin-bottom: 30px; line-height: 1.6; }
         .login-btn-group { display: flex; flex-direction: column; gap: 12px; }
-        .social-login-btn {
-            background: white; color: var(--text-main);
-            padding: 14px; border-radius: 15px; border: none;
-            font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            font-size: 15px;
-        }
-
-        /* --- FEED GUEST BANNER --- */
-        #guestFeedBanner {
-            display: none; 
-            text-align: center; 
-            padding: 15px; 
-            margin-bottom: 20px;
-            background: rgba(108, 93, 211, 0.1);
-            border-radius: 15px;
-            color: var(--primary);
-            font-weight: 500;
-        }
+        .social-login-btn { background: white; color: var(--text-main); padding: 14px; border-radius: 15px; border: none; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); font-size: 15px; }
+        #guestFeedBanner { display: none; text-align: center; padding: 15px; margin-bottom: 20px; background: rgba(108, 93, 211, 0.1); border-radius: 15px; color: var(--primary); font-weight: 500; }
 
         /* --- MODAL & TOAST --- */
-        .modal-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
-            z-index: 4000; display: none; align-items: center; justify-content: center;
-        }
-        .modal-box {
-            background: var(--bg-card); width: 90%; max-width: 400px; padding: 20px;
-            border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            display: flex; flex-direction: column; gap: 15px; color: var(--text-main);
-        }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 4000; display: none; align-items: center; justify-content: center; }
+        .modal-box { background: var(--bg-card); width: 90%; max-width: 400px; padding: 20px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; flex-direction: column; gap: 15px; color: var(--text-main); }
         .modal-title { font-size: 18px; font-weight: 800; }
         .modal-btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px; }
 
-        #toastBox {
-            position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
-            background: rgba(40, 40, 45, 0.95); color: white;
-            padding: 12px 25px; border-radius: 50px;
-            display: flex; align-items: center; gap: 10px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            z-index: 6000; pointer-events: none; opacity: 0; transition: 0.3s;
-            backdrop-filter: blur(5px);
-        }
+        #toastBox { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); background: rgba(40, 40, 45, 0.95); color: white; padding: 12px 25px; border-radius: 50px; display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 6000; pointer-events: none; opacity: 0; transition: 0.3s; backdrop-filter: blur(5px); }
         #toastBox.show { animation: toastSlide 0.5s forwards; }
         .toast-icon { background: var(--primary); width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; }
     </style>
 </head>
 <body>
 
+    <!-- Pull Refresh Spinner -->
     <div id="ptr-spinner"></div>
 
+    <!-- Toast Notification -->
     <div id="toastBox">
-        <div class="toast-icon"><i class="ph-bold ph-check"></i></div>
+        <div class="toast-icon"><i class="fa-solid fa-check"></i></div>
         <span id="toastMsg">Success</span>
     </div>
 
+    <!-- EDIT POST MODAL -->
     <div id="editModal" class="modal-overlay">
         <div class="modal-box">
             <div class="modal-title">Edit Post</div>
@@ -251,6 +197,7 @@
         </div>
     </div>
 
+    <!-- Main App Interface -->
     <div id="appInterface" style="display:flex; flex-direction:column; height:100%;">
         <div class="header">
             <div class="header-title">Social69</div>
@@ -259,6 +206,7 @@
 
         <div class="content-wrapper" id="contentArea">
             
+            <!-- Home Feed -->
             <div id="tab-home" class="tab-page active-tab">
                 <div id="loggedInCreateBox" class="create-box" style="display:none;">
                     <div class="input-row">
@@ -267,123 +215,117 @@
                     </div>
                     <img id="previewImg" style="width:100%; border-radius:12px; display:none; margin-bottom:15px;">
                     <div class="action-row">
-                        <label for="postFile" class="photo-trigger">
-                            <i class="ph ph-image"></i> Photo
-                        </label>
+                        <label for="postFile" class="photo-trigger"><i class="fa-solid fa-image"></i> Photo</label>
                         <input type="file" id="postFile" accept="image/*" style="display:none" onchange="previewFile()">
                         <button class="btn btn-primary" onclick="submitPost()">Post</button>
                     </div>
                 </div>
-
                 <div id="guestFeedBanner">
-                    <i class="ph-fill ph-lock-key" style="font-size:24px; vertical-align:middle; margin-right:5px;"></i>
+                    <i class="fa-solid fa-lock" style="font-size:24px; vertical-align:middle; margin-right:5px;"></i>
                     Login to post & interact!
                 </div>
-
                 <div id="feedContainer"></div>
                 <div style="text-align:center; padding:20px; color:#ccc; font-size:12px;">End of Feed</div>
             </div>
 
+            <!-- Friends -->
             <div id="tab-friends" class="tab-page">
                 <h3 style="margin:0 0 15px 0;">People</h3>
-                <div id="friendList">
-                    <div style="text-align:center; padding:20px; color:var(--text-gray);">Loading...</div>
-                </div>
+                <div id="friendList"><div style="text-align:center; padding:20px; color:var(--text-gray);">Loading...</div></div>
             </div>
 
+            <!-- Profile -->
             <div id="tab-profile" class="tab-page">
-                
                 <div style="text-align:right; margin-bottom:10px;">
                     <button class="btn btn-ghost" onclick="toggleTheme()" style="background:var(--bg-card);">
-                        <i id="themeIcon" class="ph-fill ph-moon" style="font-size:20px;"></i> Theme
+                        <i id="themeIcon" class="fa-solid fa-moon" style="font-size:20px;"></i> Theme
                     </button>
                 </div>
-
                 <div id="profile-guest-view">
                     <div class="guest-welcome-card">
-                        <i class="ph-fill ph-planet guest-icon"></i>
+                        <i class="fa-solid fa-earth-americas guest-icon"></i>
                         <div class="guest-title">Welcome to Social69</div>
-                        <div class="guest-desc">
-                            Join our community to share your moments,<br>
-                            connect with friends, and vibe together.
-                        </div>
+                        <div class="guest-desc">Join our community to share your moments,<br>connect with friends, and vibe together.</div>
                         <div class="login-btn-group">
                             <button class="social-login-btn" onclick="loginGoogle()">
-                                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20">
-                                Continue with Google
+                                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20"> Continue with Google
                             </button>
                             <button class="social-login-btn" onclick="loginGithub()">
-                                <i class="ph-fill ph-github-logo" style="font-size:22px;"></i>
-                                Continue with GitHub
+                                <i class="fa-brands fa-github" style="font-size:22px;"></i> Continue with GitHub
                             </button>
                         </div>
                     </div>
                 </div>
-
                 <div id="profile-user-view" style="display:none;">
                     <div class="profile-header">
                         <div style="position:relative; display:inline-block;">
                             <img id="profilePic" class="avatar" style="width:100px; height:100px; border:4px solid var(--bg-body);">
-                            <label for="newProfilePic" style="position:absolute; bottom:0; right:0; background:var(--primary); color:white; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer;">
-                                <i class="ph ph-camera"></i>
-                            </label>
+                            <label for="newProfilePic" style="position:absolute; bottom:0; right:0; background:var(--primary); color:white; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer;"><i class="fa-solid fa-camera"></i></label>
                             <input type="file" id="newProfilePic" accept="image/*" style="display:none" onchange="uploadProfilePic()">
                         </div>
                         <h2 id="profileNameDisplay" style="margin:15px 0 5px;">User Name</h2>
                         <input type="text" id="editName" class="post-input" style="text-align:center; margin-bottom:15px;" placeholder="Edit display name">
                         <button class="btn btn-primary" style="width:100%; margin-bottom:10px;" onclick="saveName()">Save Changes</button>
-                        <button class="btn btn-ghost" style="width:100%; color:#ff4d4f;" onclick="auth.signOut()">
-                            <i class="ph ph-sign-out"></i> Log Out
-                        </button>
+                        <button class="btn btn-ghost" style="width:100%; color:#ff4d4f;" onclick="auth.signOut()"><i class="fa-solid fa-right-from-bracket"></i> Log Out</button>
                     </div>
                 </div>
-
             </div>
-
         </div>
 
+        <!-- Floating Navigation -->
         <div class="nav-dock">
             <div class="nav-item active" onclick="switchTab('home', this)">
-                <i class="ph-fill ph-house"></i>
+                <i class="fa-solid fa-house"></i>
                 <div class="nav-indicator"></div>
             </div>
             <div class="nav-item" onclick="switchTab('friends', this)">
-                <i class="ph-fill ph-users"></i>
-                <div id="chatBadge" class="nav-badge"></div>
+                <i class="fa-solid fa-user-group"></i>
                 <div class="nav-indicator"></div>
             </div>
             <div class="nav-item" onclick="switchTab('profile', this)">
-                <i class="ph-fill ph-user"></i>
+                <i class="fa-solid fa-user"></i>
                 <div class="nav-indicator"></div>
             </div>
         </div>
     </div>
 
+    <!-- Fullscreen Comment/Chat Overlays -->
     <div id="overlayScreen" class="overlay-screen">
         <div class="os-header">
-            <i class="ph ph-arrow-left" style="font-size:24px; cursor:pointer;" onclick="closeOverlay()"></i>
+            <i class="fa-solid fa-arrow-left" style="font-size:24px; cursor:pointer;" onclick="closeOverlay()"></i>
             <div class="os-title" id="overlayTitle">Comments</div>
         </div>
         <div id="overlayBody" class="os-body"></div>
         <div class="os-input">
             <input type="text" id="overlayInput" class="post-input" placeholder="Type here...">
             <button class="btn btn-primary" style="padding:10px;" onclick="handleOverlaySend()">
-                <i class="ph-fill ph-paper-plane-right"></i>
+                <i class="fa-solid fa-paper-plane"></i>
             </button>
         </div>
     </div>
 
 <script>
-    // 🛡️ SECURITY
-    document.addEventListener('contextmenu', event => event.preventDefault());
+    // 🛡️ SECURITY: Prevent Inspect & View Source
+    document.addEventListener('contextmenu', e => e.preventDefault());
+    
     document.onkeydown = function(e) {
-        if(e.keyCode == 123) return false; 
-        if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false; 
-        if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false; 
-        if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; 
+        if(e.keyCode == 123) return false;
+        if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false;
+        if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false;
+        if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false;
     }
 
-    // ⚠️ CONFIGURATION
+    // Anti-Debug Loop (Freezes DevTools)
+    setInterval(() => {
+        const before = new Date().getTime();
+        debugger; 
+        const after = new Date().getTime();
+        if (after - before > 100) {
+            document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column;"><h1>⚠️ Access Denied</h1><p>Inspection is not allowed.</p></div>';
+        }
+    }, 1000);
+
+    // ⚠️ CONFIGURATION (Replace with yours)
     const firebaseConfig = {
       apiKey: "AIzaSyCUteIjOOPxPYrCutDSo9t0cVtLqnGTWxU",
       authDomain: "chat-27f21.firebaseapp.com",
@@ -403,31 +345,36 @@
     let myData = {};
     let overlayMode = ''; 
     let activeTargetId = null; 
-    let chatReceiverId = null; // NEW: To store who we are chatting with
+    let currentChatPartnerId = null; 
     let unsubOverlay = null;
     let feedUnsubscribe = null;
-    let unreadListener = null; // NEW: For notification listener
     let editingPostId = null;
 
-    // --- THEME MANAGEMENT ---
+    // --- SOUND (Simple Beep) ---
+    const playNotif = () => {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        osc.connect(ctx.destination);
+        osc.start();
+        setTimeout(() => osc.stop(), 100);
+    };
+
+    // --- THEME ---
     const checkTheme = () => {
-        const isDark = localStorage.getItem('theme') === 'dark';
-        if (isDark) {
+        if (localStorage.getItem('theme') === 'dark') {
             document.body.classList.add('dark-mode');
-            document.getElementById('themeIcon').classList.replace('ph-moon', 'ph-sun');
+            document.getElementById('themeIcon').classList.replace('fa-moon', 'fa-sun');
         }
     };
     checkTheme();
-
     window.toggleTheme = () => {
         document.body.classList.toggle('dark-mode');
         const isDark = document.body.classList.contains('dark-mode');
         localStorage.setItem('theme', isDark ? 'dark' : 'light');
-        const icon = document.getElementById('themeIcon');
-        if(isDark) icon.classList.replace('ph-moon', 'ph-sun');
-        else icon.classList.replace('ph-sun', 'ph-moon');
+        document.getElementById('themeIcon').classList.replace(isDark ? 'fa-moon' : 'fa-sun', isDark ? 'fa-sun' : 'fa-moon');
     };
 
+    // --- TOAST ---
     window.showToast = (msg) => {
         const box = document.getElementById('toastBox');
         document.getElementById('toastMsg').innerText = msg;
@@ -435,27 +382,8 @@
         setTimeout(() => box.classList.remove('show'), 3000);
     };
 
-    const makeLinksClickable = (text) => {
-        if (!text) return '';
-        const urlRegex = /(https?:\/\/[^\s]+)/g;
-        return text.replace(urlRegex, (url) => `<a href="${url}" target="_blank">${url}</a>`);
-    };
-
-    // --- PULL TO REFRESH ---
-    let pStart = {x:0, y:0};
-    const contentArea = document.getElementById('contentArea');
-    const ptrSpinner = document.getElementById('ptr-spinner');
-    contentArea.addEventListener('touchstart', e => { pStart.y = e.touches[0].clientY; });
-    contentArea.addEventListener('touchmove', e => {
-        let y = e.touches[0].clientY;
-        if(contentArea.scrollTop === 0 && y > pStart.y + 70) ptrSpinner.style.display = 'block';
-    });
-    contentArea.addEventListener('touchend', e => {
-        if(ptrSpinner.style.display === 'block') {
-            loadFeed(); 
-            setTimeout(() => { ptrSpinner.style.display = 'none'; }, 800);
-        }
-    });
+    // --- HELPER ---
+    const makeLinksClickable = (text) => text ? text.replace(/(https?:\/\/[^\s]+)/g, url => `<a href="${url}" target="_blank">${url}</a>`) : '';
 
     // --- AUTH ---
     auth.onAuthStateChanged(user => {
@@ -465,59 +393,65 @@
                     const data = doc.data();
                     if (data.isBanned) {
                         auth.signOut();
-                        alert("Your account has been suspended by Admin.");
+                        alert("Suspended.");
                         window.location.reload();
                         return;
                     }
                     currentUser = user;
                     myData = data;
-
                     document.getElementById('loggedInCreateBox').style.display = 'block';
                     document.getElementById('guestFeedBanner').style.display = 'none';
-                    document.getElementById('profile-guest-view').style.display = 'none'; 
-                    document.getElementById('profile-user-view').style.display = 'block'; 
-
+                    document.getElementById('profile-guest-view').style.display = 'none';
+                    document.getElementById('profile-user-view').style.display = 'block';
                     updateUI();
                     loadFriends();
-                    startNotificationListener(); // NEW: Start listening for messages
+                    
+                    // Notification Listener
+                    db.collection('messages')
+                        .where('receiverId', '==', user.uid)
+                        .orderBy('timestamp', 'desc')
+                        .limit(1)
+                        .onSnapshot(snapshot => {
+                            snapshot.docChanges().forEach(change => {
+                                if (change.type === 'added') {
+                                    const msg = change.doc.data();
+                                    const now = new Date().getTime();
+                                    const msgTime = msg.timestamp ? msg.timestamp.toMillis() : now;
+                                    if (now - msgTime < 3000 && msg.sender !== user.uid) {
+                                        playNotif();
+                                        showToast(`Msg from ${msg.senderName || 'friend'}`);
+                                    }
+                                }
+                            });
+                        });
+
                 } else {
-                    myData = { 
-                        name: user.displayName, photo: user.photoURL, 
-                        uid: user.uid, email: user.email, 
-                        isAdmin: (user.email === ADMIN_EMAIL),
-                        isBanned: false
-                    };
+                    myData = { name: user.displayName, photo: user.photoURL, uid: user.uid, email: user.email, isAdmin: (user.email === ADMIN_EMAIL), isBanned: false };
                     doc.ref.set(myData);
                     updateUI();
                 }
             });
+            loadFeed();
         } else {
             currentUser = null;
             myData = {};
-            if(unreadListener) unreadListener(); // Stop listening
-            document.getElementById('chatBadge').style.display = 'none';
-
             document.getElementById('loggedInCreateBox').style.display = 'none';
             document.getElementById('guestFeedBanner').style.display = 'block';
-            document.getElementById('profile-guest-view').style.display = 'flex'; 
+            document.getElementById('profile-guest-view').style.display = 'flex';
             document.getElementById('profile-user-view').style.display = 'none';
-            
             document.getElementById('myHeaderThumb').src = "https://ui-avatars.com/api/?name=S+6&background=6C5DD3&color=fff&rounded=true&bold=true&size=128";
             document.getElementById('friendList').innerHTML = "<div style='text-align:center; padding:20px; color:var(--text-gray);'>Please login to see friends.</div>";
+            loadFeed();
         }
-        loadFeed();
     });
 
     const loginGoogle = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
-    const loginGithub = () => auth.signInWithPopup(new firebase.auth.GithubAuthProvider()).catch(e => alert("Please enable GitHub in Firebase Console!"));
+    const loginGithub = () => auth.signInWithPopup(new firebase.auth.GithubAuthProvider()).catch(() => alert("Enable GitHub in Console!"));
     
     const updateUI = () => {
         if(!currentUser) return;
         const pic = myData.photo || 'https://via.placeholder.com/100';
-        ['myHeaderThumb', 'postThumb', 'profilePic'].forEach(id => {
-            const el = document.getElementById(id);
-            if(el) el.src = pic;
-        });
+        ['myHeaderThumb', 'postThumb', 'profilePic'].forEach(id => { const el = document.getElementById(id); if(el) el.src = pic; });
         document.getElementById('editName').value = myData.name;
         document.getElementById('profileNameDisplay').innerText = myData.name;
     };
@@ -525,261 +459,106 @@
     window.switchTab = (tab, el) => {
         document.querySelectorAll('.tab-page').forEach(t => t.classList.remove('active-tab'));
         document.getElementById('tab-'+tab).classList.add('active-tab');
-        if(el) {
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            el.classList.add('active');
-        }
-    };
-
-    // --- NOTIFICATION SYSTEM (NEW) ---
-    const startNotificationListener = () => {
-        if(unreadListener) unreadListener();
-        // Listen for messages where I am the receiver and isRead is false
-        unreadListener = db.collection('messages')
-            .where('receiverId', '==', currentUser.uid)
-            .where('isRead', '==', false)
-            .onSnapshot(snap => {
-                const badge = document.getElementById('chatBadge');
-                if(!snap.empty) {
-                    badge.style.display = 'block';
-                    // If currently chatting with this person, mark as read immediately
-                    if(overlayMode === 'chat' && chatReceiverId) {
-                         const incomingSender = snap.docs[0].data().sender;
-                         if(incomingSender === chatReceiverId) {
-                             markMessagesAsRead(incomingSender);
-                         }
-                    }
-                } else {
-                    badge.style.display = 'none';
-                }
-            });
-    };
-
-    const markMessagesAsRead = (senderId) => {
-        db.collection('messages')
-          .where('chatId', '==', [currentUser.uid, senderId].sort().join("_"))
-          .where('receiverId', '==', currentUser.uid)
-          .where('isRead', '==', false)
-          .get()
-          .then(snap => {
-              const batch = db.batch();
-              snap.forEach(doc => {
-                  batch.update(doc.ref, { isRead: true });
-              });
-              batch.commit();
-          });
+        if(el) { document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active')); el.classList.add('active'); }
     };
 
     // --- POSTS ---
     const previewFile = () => {
         const file = document.getElementById('postFile').files[0];
-        if(file) {
-            const r = new FileReader();
-            r.onload = e => { document.getElementById('previewImg').src = e.target.result; document.getElementById('previewImg').style.display = 'block'; }
-            r.readAsDataURL(file);
-        }
+        if(file) { const r = new FileReader(); r.onload = e => { document.getElementById('previewImg').src = e.target.result; document.getElementById('previewImg').style.display = 'block'; }; r.readAsDataURL(file); }
     };
 
     const submitPost = async () => {
-        if(!currentUser) return showToast("Please Login First!");
+        if(!currentUser) return showToast("Login First!");
         const text = document.getElementById('postInput').value;
         const img = document.getElementById('previewImg').style.display === 'block' ? document.getElementById('previewImg').src : null;
         if(!text && !img) return;
-
         try {
-            await db.collection('posts').add({
-                text, image: img, uid: currentUser.uid,
-                authorName: myData.name, authorPhoto: myData.photo,
-                isAdmin: myData.isAdmin || false, likes: [],
-                commentCount: 0,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            document.getElementById('postInput').value = "";
-            document.getElementById('previewImg').style.display = 'none';
-            document.getElementById('previewImg').src = "";
-            showToast("Post Sent!");
-        } catch(e) {
-            alert("Error: You might be banned or restricted.");
-        }
+            await db.collection('posts').add({ text, image: img, uid: currentUser.uid, authorName: myData.name, authorPhoto: myData.photo, isAdmin: myData.isAdmin||false, likes: [], commentCount: 0, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+            document.getElementById('postInput').value = ""; document.getElementById('previewImg').style.display = 'none'; document.getElementById('previewImg').src = ""; showToast("Post Sent!");
+        } catch(e) { alert("Error."); }
     };
 
-    window.toggleBanUser = (uid, currentStatus, name) => {
-        if(!myData.isAdmin) return;
-        const action = currentStatus ? "Unban" : "Ban";
-        if(confirm(`Are you sure you want to ${action} ${name}?`)) {
-            db.collection('users').doc(uid).update({ isBanned: !currentStatus })
-            .then(() => showToast(`User ${action}ned!`));
-        }
-    };
-
-    // --- FEED ---
     const loadFeed = () => {
         if(feedUnsubscribe) feedUnsubscribe(); 
-        feedUnsubscribe = db.collection('posts')
-            .orderBy('timestamp', 'desc')
-            .onSnapshot(snap => {
-                const container = document.getElementById('feedContainer');
-                container.innerHTML = "";
-                snap.forEach(d => {
-                    const p = {id: d.id, ...d.data()};
-                    const isLiked = currentUser && p.likes && p.likes.includes(currentUser.uid);
-                    const likeIcon = isLiked ? 'ph-fill ph-heart' : 'ph ph-heart';
-                    const adminIcon = p.isAdmin ? `<i class="ph-fill ph-seal-check admin-badge"></i>` : '';
-                    
-                    const isOwner = currentUser && (currentUser.uid === p.uid || myData.isAdmin);
-                    const delBtn = isOwner ? `<i class="ph ph-trash" onclick="deletePost('${p.id}')" style="color:#ff4d4f;cursor:pointer;"></i>` : '';
-                    const editBtn = isOwner ? `<i class="ph ph-pencil-simple" onclick="openEditModal('${p.id}')" style="color:#6C5DD3;cursor:pointer;margin-right:10px;"></i>` : '';
-                    
-                    let timeDisplay = "Just now";
-                    if(p.timestamp) {
-                        const date = p.timestamp.toDate();
-                        timeDisplay = date.toLocaleDateString() + " " + date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-                    }
-                    const displayText = makeLinksClickable(p.text || '');
-                    const plainText = (p.text || '').replace(/"/g, '&quot;');
-
-                    container.innerHTML += `
-                        <div class="post-card">
-                            <div class="pc-header">
-                                <div class="pc-user" onclick="startChat('${p.uid}', '${p.authorName}')">
-                                    <img src="${p.authorPhoto}" class="avatar" style="width:40px; height:40px;">
-                                    <div>
-                                        <div class="pc-name">${p.authorName} ${adminIcon}</div>
-                                        <div class="pc-time">${timeDisplay}</div>
-                                    </div>
-                                </div>
-                                <div>${editBtn}${delBtn}</div>
-                            </div>
-                            <div class="pc-text" id="text-${p.id}">${displayText}</div>
-                            ${p.image ? `<img src="${p.image}" class="pc-img">` : ''}
-                            
-                            <div class="pc-stats">
-                                <span>${p.likes ? p.likes.length : 0} Likes</span>
-                                <span onclick="openOverlay('comment', '${p.id}')">${p.commentCount || 0} Comments</span>
-                            </div>
-                            <div class="pc-actions">
-                                <div class="pc-btn ${isLiked?'liked':''}" onclick="toggleLike('${p.id}', ${isLiked})">
-                                    <i class="${likeIcon}" style="font-size:20px;"></i> Like
-                                </div>
-                                <div class="pc-btn" onclick="openOverlay('comment', '${p.id}')">
-                                    <i class="ph ph-chat-circle" style="font-size:20px;"></i> Comment
-                                </div>
-                                <div class="pc-btn" onclick="sharePost('${plainText}')">
-                                    <i class="ph ph-share-network" style="font-size:20px;"></i> Share
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
+        feedUnsubscribe = db.collection('posts').orderBy('timestamp', 'desc').onSnapshot(snap => {
+            const container = document.getElementById('feedContainer'); container.innerHTML = "";
+            snap.forEach(d => {
+                const p = {id: d.id, ...d.data()};
+                const isLiked = currentUser && p.likes && p.likes.includes(currentUser.uid);
+                const likeIcon = isLiked ? 'fa-solid fa-heart' : 'fa-regular fa-heart';
+                const adminIcon = p.isAdmin ? `<i class="fa-solid fa-circle-check admin-badge"></i>` : '';
+                const isOwner = currentUser && (currentUser.uid === p.uid || myData.isAdmin);
+                const delBtn = isOwner ? `<i class="fa-solid fa-trash" onclick="deletePost('${p.id}')" style="color:#ff4d4f;cursor:pointer;"></i>` : '';
+                const editBtn = isOwner ? `<i class="fa-solid fa-pen" onclick="openEditModal('${p.id}')" style="color:#6C5DD3;cursor:pointer;margin-right:10px;"></i>` : '';
+                let timeDisplay = "Just now";
+                if(p.timestamp) { const date = p.timestamp.toDate(); timeDisplay = date.toLocaleDateString() + " " + date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
+                container.innerHTML += `<div class="post-card"><div class="pc-header"><div class="pc-user" onclick="startChat('${p.uid}', '${p.authorName}')"><img src="${p.authorPhoto}" class="avatar" style="width:40px; height:40px;"><div><div class="pc-name">${p.authorName} ${adminIcon}</div><div class="pc-time">${timeDisplay}</div></div></div><div>${editBtn}${delBtn}</div></div><div class="pc-text" id="text-${p.id}">${makeLinksClickable(p.text || '')}</div>${p.image ? `<img src="${p.image}" class="pc-img">` : ''}<div class="pc-stats"><span>${p.likes?p.likes.length:0} Likes</span><span onclick="openOverlay('comment', '${p.id}')">${p.commentCount||0} Comments</span></div><div class="pc-actions"><div class="pc-btn ${isLiked?'liked':''}" onclick="toggleLike('${p.id}', ${isLiked})"><i class="${likeIcon}" style="font-size:20px;"></i> Like</div><div class="pc-btn" onclick="openOverlay('comment', '${p.id}')"><i class="fa-regular fa-comment" style="font-size:20px;"></i> Comment</div><div class="pc-btn" onclick="sharePost('${(p.text || '').replace(/"/g, '&quot;')}')"><i class="fa-solid fa-share-nodes" style="font-size:20px;"></i> Share</div></div></div>`;
             });
-    };
-
-    const deletePost = (id) => confirm("Delete this post?") && db.collection('posts').doc(id).delete();
-    
-    const toggleLike = (id, loved) => {
-        if(!currentUser) return showToast("Please Login to Like!");
-        db.collection('posts').doc(id).update({
-            likes: loved ? firebase.firestore.FieldValue.arrayRemove(currentUser.uid) : firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
         });
     };
 
-    // --- FRIENDS LIST ---
+    const deletePost = (id) => confirm("Delete?") && db.collection('posts').doc(id).delete();
+    const toggleLike = (id, loved) => {
+        if(!currentUser) return showToast("Login to Like!");
+        db.collection('posts').doc(id).update({ likes: loved ? firebase.firestore.FieldValue.arrayRemove(currentUser.uid) : firebase.firestore.FieldValue.arrayUnion(currentUser.uid) });
+    };
+
+    // --- FRIENDS ---
+    window.toggleBanUser = (uid, currentStatus, name) => {
+        if(!myData.isAdmin) return;
+        if(confirm(`Confirm ${currentStatus?'Unban':'Ban'} ${name}?`)) db.collection('users').doc(uid).update({ isBanned: !currentStatus }).then(() => showToast("Success!"));
+    };
     const loadFriends = () => {
         if(!currentUser) return;
         document.getElementById('friendList').innerHTML = "<div style='text-align:center; padding:20px; color:var(--text-gray);'>Loading...</div>";
         db.collection('users').onSnapshot(snap => {
-            const list = document.getElementById('friendList');
-            list.innerHTML = "";
-            let foundOthers = false;
+            const list = document.getElementById('friendList'); list.innerHTML = ""; let found = false;
             snap.forEach(d => {
                 const u = d.data();
                 if(u.uid !== currentUser.uid) {
-                    foundOthers = true;
-                    const isBanned = u.isBanned === true;
-                    let banBtn = '';
-                    if (myData.isAdmin) {
-                        banBtn = `
-                            <button onclick="toggleBanUser('${u.uid}', ${isBanned}, '${u.name}')" 
-                                class="btn" style="background:${isBanned ? '#4caf50' : '#ff4d4f'}; color:white; padding:5px 10px; font-size:12px; margin-left:10px;">
-                                ${isBanned ? 'Unban' : 'Ban'}
-                            </button>
-                        `;
-                    }
-                    list.innerHTML += `
-                        <div class="friend-card">
-                            <img src="${u.photo}" class="avatar" style="width:50px; height:50px;" onclick="startChat('${u.uid}', '${u.name}')">
-                            <div style="flex:1; margin-left:10px;">
-                                <div style="font-weight:600;">${u.name} ${isBanned ? '<span style="color:red; font-size:10px;">(BANNED)</span>' : ''}</div>
-                                <div style="font-size:12px; color:var(--text-gray);">Tap to chat</div>
-                            </div>
-                            ${banBtn}
-                            <i class="ph-fill ph-chat-circle-dots" style="color:var(--primary); font-size:24px; cursor:pointer;" onclick="startChat('${u.uid}', '${u.name}')"></i>
-                        </div>
-                    `;
+                    found = true;
+                    let banBtn = myData.isAdmin ? `<button onclick="toggleBanUser('${u.uid}', ${u.isBanned}, '${u.name}')" class="btn" style="background:${u.isBanned?'#4caf50':'#ff4d4f'}; color:white; padding:5px 10px; font-size:12px; margin-left:10px;">${u.isBanned?'Unban':'Ban'}</button>` : '';
+                    list.innerHTML += `<div class="friend-card"><img src="${u.photo}" class="avatar" style="width:50px; height:50px;" onclick="startChat('${u.uid}', '${u.name}')"><div style="flex:1; margin-left:10px;"><div style="font-weight:600;">${u.name} ${u.isBanned?'<span style="color:red;font-size:10px;">(BANNED)</span>':''}</div><div style="font-size:12px;color:var(--text-gray);">Tap to chat</div></div>${banBtn}<i class="fa-solid fa-ellipsis" style="color:var(--primary);font-size:24px;cursor:pointer;" onclick="startChat('${u.uid}', '${u.name}')"></i></div>`;
                 }
             });
-            if(!foundOthers) {
-                list.innerHTML = `<div style="text-align:center; padding:40px 20px; color:var(--text-gray);">
-                    <i class="ph ph-users" style="font-size:40px; opacity:0.5; margin-bottom:10px;"></i><br>
-                    No other users found yet.<br>Invite friends to join!
-                </div>`;
-            }
+            if(!found) list.innerHTML = `<div style="text-align:center; padding:40px 20px; color:var(--text-gray);">No users found.</div>`;
         });
     };
 
-    // --- OVERLAY (CHAT & COMMENTS) ---
+    // --- OVERLAY ---
     window.openOverlay = (mode, targetId, name = '') => {
-        if(!currentUser) return showToast("Please Login First!");
+        if(!currentUser) return showToast("Login First!");
         overlayMode = mode;
         const screen = document.getElementById('overlayScreen');
-        const title = document.getElementById('overlayTitle');
-        const body = document.getElementById('overlayBody');
-        
         screen.style.display = 'flex';
-        title.innerText = mode === 'comment' ? "Comments" : name;
-        body.innerHTML = '<div style="text-align:center; padding:20px;">Loading...</div>';
+        document.getElementById('overlayTitle').innerText = mode === 'comment' ? "Comments" : name;
+        document.getElementById('overlayBody').innerHTML = '<div style="text-align:center; padding:20px;">Loading...</div>';
         if(unsubOverlay) unsubOverlay();
 
         if (mode === 'chat') {
             activeTargetId = [currentUser.uid, targetId].sort().join("_");
+            currentChatPartnerId = targetId;
         } else {
-            activeTargetId = targetId; 
+            activeTargetId = targetId;
+            currentChatPartnerId = null;
         }
 
-        const ref = mode === 'comment' 
-            ? db.collection('comments').where('postId', '==', activeTargetId) 
-            : db.collection('messages').where('chatId', '==', activeTargetId);
-
+        const ref = mode === 'comment' ? db.collection('comments').where('postId', '==', activeTargetId) : db.collection('messages').where('chatId', '==', activeTargetId);
         unsubOverlay = ref.onSnapshot(snap => {
-            let list = [];
-            snap.forEach(d => list.push(d.data()));
-            list.sort((a,b) => {
-                const tA = a.timestamp ? a.timestamp.toMillis() : Date.now();
-                const tB = b.timestamp ? b.timestamp.toMillis() : Date.now();
-                return tA - tB;
-            });
+            let list = []; snap.forEach(d => list.push(d.data()));
+            list.sort((a,b) => (a.timestamp ? a.timestamp.toMillis() : Date.now()) - (b.timestamp ? b.timestamp.toMillis() : Date.now()));
             
-            if(list.length === 0) body.innerHTML = '<div style="text-align:center; color:var(--text-gray); margin-top:50px;">No messages yet.</div>';
+            const body = document.getElementById('overlayBody');
+            if(list.length === 0) body.innerHTML = '<div style="text-align:center; color:var(--text-gray); margin-top:50px;">No messages.</div>';
             else {
                 body.innerHTML = list.map(item => {
                     const txt = makeLinksClickable(item.text);
                     if (mode === 'comment') {
-                        return `
-                        <div style="display:flex; gap:10px; margin-bottom:15px;">
-                            <img src="${item.userPhoto}" class="avatar" style="width:32px; height:32px; margin-top:5px;">
-                            <div class="bubble bubble-other">
-                                <span class="bubble-name">${item.userName}</span>
-                                <span class="bubble-content">${txt}</span>
-                            </div>
-                        </div>`;
+                        return `<div style="display:flex; gap:10px; margin-bottom:15px;"><img src="${item.userPhoto}" class="avatar" style="width:32px; height:32px; margin-top:5px;"><div class="bubble bubble-other"><span class="bubble-name">${item.userName}</span><span class="bubble-content">${txt}</span></div></div>`;
                     } else {
                         const isMe = item.sender === currentUser.uid;
-                        return `
-                        <div style="display:flex; flex-direction:column; margin-bottom:5px; align-items:${isMe?'flex-end':'flex-start'}">
-                            <div class="bubble ${isMe ? 'bubble-me' : 'bubble-other'}">
-                                <span class="bubble-content">${txt}</span>
-                            </div>
-                        </div>`;
+                        return `<div style="display:flex; flex-direction:column; margin-bottom:5px; align-items:${isMe?'flex-end':'flex-start'}"><div class="bubble ${isMe ? 'bubble-me' : 'bubble-other'}"><span class="bubble-content">${txt}</span></div></div>`;
                     }
                 }).join('');
             }
@@ -787,75 +566,38 @@
         });
     };
 
-    window.closeOverlay = () => {
-        document.getElementById('overlayScreen').style.display = 'none';
-        if(unsubOverlay) unsubOverlay();
-        overlayMode = '';
-        chatReceiverId = null; // Clear active receiver
-    };
+    window.closeOverlay = () => { document.getElementById('overlayScreen').style.display = 'none'; if(unsubOverlay) unsubOverlay(); currentChatPartnerId = null; };
 
     window.handleOverlaySend = () => {
         const txt = document.getElementById('overlayInput').value;
         if(!txt) return;
-
         if(overlayMode === 'comment') {
             const batch = db.batch();
-            batch.set(db.collection('comments').doc(), {
-                postId: activeTargetId, text: txt, uid: currentUser.uid,
-                userName: myData.name, userPhoto: myData.photo,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            batch.update(db.collection('posts').doc(activeTargetId), {
-                commentCount: firebase.firestore.FieldValue.increment(1)
-            });
-            batch.commit().catch(e => alert("Failed. You might be banned."));
+            batch.set(db.collection('comments').doc(), { postId: activeTargetId, text: txt, uid: currentUser.uid, userName: myData.name, userPhoto: myData.photo, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+            batch.update(db.collection('posts').doc(activeTargetId), { commentCount: firebase.firestore.FieldValue.increment(1) });
+            batch.commit().catch(e => alert("Failed."));
         } else {
-            // UPDATED: Chat Send with Notification support
             db.collection('messages').add({
                 chatId: activeTargetId,
-                text: txt, 
+                text: txt,
                 sender: currentUser.uid,
-                receiverId: chatReceiverId, // NEW: Needed for notification
-                isRead: false, // NEW: Unread status
+                senderName: myData.name,
+                receiverId: currentChatPartnerId,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            }).catch(e => alert("Message failed. You might be banned."));
+            }).catch(e => alert("Failed."));
         }
         document.getElementById('overlayInput').value = "";
     };
     
-    window.startChat = (uid, name) => {
-        chatReceiverId = uid; // Store who we are chatting with
-        openOverlay('chat', uid, name);
-        markMessagesAsRead(uid); // Mark as read when opening chat
-    };
-
-    // --- EDIT & PROFILE UTILS ---
-    window.openEditModal = (id) => {
-        editingPostId = id;
-        const currentTextEl = document.getElementById(`text-${id}`);
-        const currentText = currentTextEl ? currentTextEl.innerText : "";
-        document.getElementById('editModalInput').value = currentText;
-        document.getElementById('editModal').style.display = 'flex';
-    };
-    window.closeEditModal = () => { document.getElementById('editModal').style.display = 'none'; editingPostId = null; };
-    window.saveEditPost = () => {
-        const newText = document.getElementById('editModalInput').value;
-        if(editingPostId && newText) {
-            db.collection('posts').doc(editingPostId).update({ text: newText })
-            .then(() => { closeEditModal(); showToast("Post updated!"); });
-        }
-    };
-    window.saveName = () => {
-        db.collection('users').doc(currentUser.uid).update({ name: document.getElementById('editName').value }).then(() => showToast("Saved!"));
-    };
-    window.uploadProfilePic = () => {
-        const file = document.getElementById('newProfilePic').files[0];
-        if(file) {
-            const r = new FileReader();
-            r.onload = e => db.collection('users').doc(currentUser.uid).update({ photo: e.target.result });
-            r.readAsDataURL(file);
-        }
-    };
+    window.startChat = (uid, name) => openOverlay('chat', uid, name);
+    window.openEditModal = (id) => { editingPostId = id; document.getElementById('editModalInput').value = document.getElementById(`text-${id}`).innerText; document.getElementById('editModal').style.display = 'flex'; };
+    window.closeEditModal = () => document.getElementById('editModal').style.display = 'none';
+    window.saveEditPost = () => { const t = document.getElementById('editModalInput').value; if(editingPostId && t) db.collection('posts').doc(editingPostId).update({ text: t }).then(() => { closeEditModal(); showToast("Updated!"); }); };
+    window.saveName = () => db.collection('users').doc(currentUser.uid).update({ name: document.getElementById('editName').value }).then(() => showToast("Saved!"));
+    window.uploadProfilePic = () => { const f = document.getElementById('newProfilePic').files[0]; if(f) { const r = new FileReader(); r.onload = e => db.collection('users').doc(currentUser.uid).update({ photo: e.target.result }); r.readAsDataURL(f); } };
+    window.sharePost = async (txt) => { navigator.share ? await navigator.share({title:'Social69', text:txt, url:window.location.href}) : navigator.clipboard.writeText(txt).then(()=>showToast("Copied!")); };
 </script>
 </body>
 </html>
+
+
