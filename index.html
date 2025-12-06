@@ -372,32 +372,6 @@
         </div>
     </div>
 
-    <div id="phoneLoginModal" class="modal-overlay">
-        <div class="modal-box">
-            <div class="modal-title" style="text-align:center;">Phone Login</div>
-            
-            <div id="step-phone">
-                <div class="input-group">
-                    <label>Phone Number (e.g. +959...)</label>
-                    <input type="tel" id="phoneNumberInput" class="post-input" placeholder="+95912345678" value="+959">
-                </div>
-                <div id="recaptcha-container" style="margin-bottom:15px; display:flex; justify-content:center;"></div>
-                <button class="btn btn-primary" id="sendOtpBtn" onclick="sendOTP()" style="width:100%;">Send Verification Code</button>
-            </div>
-
-            <div id="step-otp" style="display:none;">
-                <div class="input-group">
-                    <label>Verification Code</label>
-                    <input type="number" id="otpInput" class="post-input" placeholder="123456">
-                </div>
-                <button class="btn btn-primary" onclick="verifyOTP()" style="width:100%;">Verify & Login</button>
-                <div style="text-align:center; margin-top:10px; font-size:12px; color:var(--text-gray); cursor:pointer;" onclick="closePhoneModal()">Cancel</div>
-            </div>
-
-            <button class="btn btn-ghost" onclick="closePhoneModal()" style="margin-top:10px; width:100%;" id="cancelPhoneBtn">Cancel</button>
-        </div>
-    </div>
-
     <div id="appInterface" style="display:flex; flex-direction:column; height:100%;">
         <div class="header">
             <div class="header-title">Social69</div>
@@ -463,10 +437,6 @@
                             <button class="social-login-btn" onclick="loginGithub()">
                                 <i class="ph-fill ph-github-logo" style="font-size:22px;"></i>
                                 Continue with GitHub
-                            </button>
-                            <button class="social-login-btn" onclick="openPhoneModal()">
-                                <i class="ph-fill ph-phone" style="font-size:22px; color:var(--primary);"></i>
-                                Continue with Phone
                             </button>
                         </div>
                     </div>
@@ -591,7 +561,6 @@
     let editingPostId = null;
     let unreadSenders = new Set();
     let userCache = {};
-    let confirmationResult = null; // Store SMS confirmation result
 
     // --- THEME MANAGEMENT ---
     const checkTheme = () => {
@@ -656,7 +625,7 @@
                     currentUser = user;
                     // 🔥 FIX: Ensure existing fields are prioritized over defaults
                     myData = { 
-                        name: data.name || user.displayName || user.phoneNumber, 
+                        name: data.name || user.displayName, 
                         photo: data.photo || user.photoURL, 
                         uid: user.uid, 
                         email: user.email, 
@@ -677,10 +646,8 @@
                 } else {
                     // Only run this if the document DOES NOT exist
                     myData = { 
-                        name: user.displayName || user.phoneNumber || "User", 
-                        photo: user.photoURL, 
-                        uid: user.uid, 
-                        email: user.email || "", 
+                        name: user.displayName, photo: user.photoURL, 
+                        uid: user.uid, email: user.email, 
                         isAdmin: (user.email === ADMIN_EMAIL),
                         isBanned: false,
                         bio: "Hello World",
@@ -710,65 +677,6 @@
     const loginGoogle = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
     const loginGithub = () => auth.signInWithPopup(new firebase.auth.GithubAuthProvider()).catch(e => alert("Please enable GitHub in Firebase Console!"));
     
-    // 🔥 PHONE LOGIN LOGIC
-    window.openPhoneModal = () => {
-        document.getElementById('phoneLoginModal').style.display = 'flex';
-        document.getElementById('step-phone').style.display = 'block';
-        document.getElementById('step-otp').style.display = 'none';
-        document.getElementById('cancelPhoneBtn').style.display = 'block';
-        
-        // Initialize ReCaptcha only once
-        if(!window.recaptchaVerifier) {
-            window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
-                'size': 'normal',
-                'callback': (response) => {
-                    // reCAPTCHA solved
-                }
-            });
-            window.recaptchaVerifier.render();
-        }
-    };
-
-    window.closePhoneModal = () => {
-        document.getElementById('phoneLoginModal').style.display = 'none';
-    };
-
-    window.sendOTP = () => {
-        const phoneNumber = document.getElementById('phoneNumberInput').value;
-        const appVerifier = window.recaptchaVerifier;
-        
-        if(!phoneNumber) return showToast("Enter phone number");
-
-        auth.signInWithPhoneNumber(phoneNumber, appVerifier)
-            .then((result) => {
-                confirmationResult = result;
-                document.getElementById('step-phone').style.display = 'none';
-                document.getElementById('step-otp').style.display = 'block';
-                document.getElementById('cancelPhoneBtn').style.display = 'none';
-                showToast("OTP Sent!");
-            }).catch((error) => {
-                console.error(error);
-                alert("Error sending SMS. Check format (+959...) and Console setting.");
-                // Reset recaptcha if error
-                window.recaptchaVerifier.render().then(function(widgetId) {
-                  grecaptcha.reset(widgetId);
-                });
-            });
-    };
-
-    window.verifyOTP = () => {
-        const code = document.getElementById('otpInput').value;
-        if(!code) return showToast("Enter Code");
-        
-        confirmationResult.confirm(code).then((result) => {
-            const user = result.user;
-            closePhoneModal();
-            showToast("Login Successful!");
-        }).catch((error) => {
-            alert("Bad verification code");
-        });
-    };
-
     const updateUI = () => {
         if(!currentUser) return;
         const pic = myData.photo || 'https://via.placeholder.com/100';
@@ -987,7 +895,7 @@
                     let banBtn = '';
                     if (myData.isAdmin) {
                         banBtn = `
-                            <button onclick="toggleBanUser('${u.uid}', ${isBanned}, '${u.name}')" 
+                            <button onclick="event.stopPropagation(); toggleBanUser('${u.uid}', ${isBanned}, '${u.name}')" 
                                 class="btn" style="background:${isBanned ? '#4caf50' : '#ff4d4f'}; color:white; padding:5px 10px; font-size:12px; margin-left:10px;">
                                 ${isBanned ? 'Unban' : 'Ban'}
                             </button>
@@ -1081,10 +989,10 @@
 
                         return `
                         <div style="display:flex; gap:10px; margin-bottom:15px;">
-                            <img src="${displayPhoto}" class="avatar" style="width:32px; height:32px; margin-top:5px;">
+                            <img src="${displayPhoto}" class="avatar" style="width:32px; height:32px; margin-top:5px; cursor:pointer;" onclick="viewUserProfile('${item.uid}')">
                             <div class="bubble bubble-other">
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
-                                    <span class="bubble-name">${displayName}</span>
+                                    <span class="bubble-name" style="cursor:pointer;" onclick="viewUserProfile('${item.uid}')">${displayName}</span>
                                     ${deleteBtn}
                                 </div>
                                 <span class="bubble-content">${txt}</span>
