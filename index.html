@@ -837,7 +837,7 @@
             });
     };
 
-    // 🔥 UPDATED: Index-Free Fetch (Sort in JS)
+    // 🔥 UPDATED: Index-Free Fetch (Sort in JS) & Close Noti Modal on Click
     window.openNotifications = () => {
         if (!currentUser) return showToast("Please Login!");
         document.getElementById('notificationModal').style.display = 'flex';
@@ -883,8 +883,9 @@
                     const icon = n.type === 'like' ? '<i class="ph-fill ph-heart" style="color:#FF4D4F;"></i>' : '<i class="ph-fill ph-chat-circle" style="color:#6C5DD3;"></i>';
                     const text = n.type === 'like' ? 'liked your post.' : 'commented on your post.';
                     
+                    // 🔥 FIX: Added closeNotifications() here
                     body.innerHTML += `
-                        <div class="noti-item" onclick="openOverlay('comment', '${n.postId}')">
+                        <div class="noti-item" onclick="closeNotifications(); openOverlay('comment', '${n.postId}', '', '${n.senderId}')">
                             <img src="${n.senderPhoto || 'https://via.placeholder.com/40'}" class="avatar" style="width:40px; height:40px;">
                             <div class="noti-content">
                                 <strong>${n.senderName}</strong> ${text}
@@ -1062,12 +1063,14 @@
 
     const deletePost = (id) => confirm("Delete this post?") && db.collection('posts').doc(id).delete();
     
+    // 🔥 UPDATED: Delete Comment & Decrement Count Logic
     window.deleteComment = (id) => {
         if(confirm("Are you sure you want to delete this comment?")) {
             db.collection('comments').doc(id).delete().then(() => {
                 db.collection('posts').doc(activeTargetId).update({
                     commentCount: firebase.firestore.FieldValue.increment(-1)
-                });
+                }).catch(err => console.log("Count update error:", err)); // Safe fail
+                
                 showToast("Comment deleted");
             }).catch(e => showToast("Error deleting comment"));
         }
