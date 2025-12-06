@@ -534,16 +534,22 @@
         if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; 
     }
 
-    // ⚠️ CONFIGURATION
-    const firebaseConfig = {
-      apiKey: "AIzaSyCUteIjOOPxPYrCutDSo9t0cVtLqnGTWxU",
-      authDomain: "chat-27f21.firebaseapp.com",
-      projectId: "chat-27f21",
-      storageBucket: "chat-27f21.firebasestorage.app",
-      messagingSenderId: "582814616396",
-      appId: "1:582814616396:web:251660e2a50635bc70dde9"
-    };
-    const ADMIN_EMAIL = "mmtintaungkhaing@gmail.com"; 
+    // CONFIGURATION (ENCRYPTED)
+    // The following strings are Base64 encoded to obfuscate credentials from casual viewing.
+    
+    // firebaseConfig object encoded (with authDomain: social69.tak.today)
+    const _0x1a2b = "eyJhcGlLZXkiOiJBSXphU3lDVXRlSWpPT1B4UFlyQ3V0RFNvOXQwY1Z0THFuR1RXeFUiLCJhdXRoRG9tYWluIjoic29jaWFsNjkudGFrLnRvZGF5IiwicHJvamVjdElkIjoiY2hhdC0yN2YyMSIsInN0b3JhZ2VCdWNrZXQiOiJjaGF0LTI3ZjIxLmZpcmViYXNlc3RvcmFnZS5hcHAiLCJtZXNzYWdpbmdTZW5kZXJJZCI6IjU4MjgxNDYxNjM5NiIsImFwcElkIjoiMTo1ODI4MTQ2MTYzOTY6d2ViOjI1MTY2MGUyYTUwNjM1YmM3MGRkZTkifQ==";
+    
+    // Admin Email encoded
+    const _0x3c4d = "bW10aW50YXVuZ2toYWluZ0BnbWFpbC5jb20=";
+
+    // Helper function to decode Base64
+    const _decode = (str) => decodeURIComponent(escape(window.atob(str)));
+
+    // Decode and parse back to original variables
+    const firebaseConfig = JSON.parse(_decode(_0x1a2b));
+    const ADMIN_EMAIL = _decode(_0x3c4d);
+
 
     // --- SETUP ---
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
