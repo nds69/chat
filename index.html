@@ -73,6 +73,7 @@
         .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 10px rgba(108, 93, 211, 0.3); }
         .btn-primary:active { transform: scale(0.98); }
         .btn-ghost { background: transparent; color: var(--text-gray); }
+        .btn-danger { background: #FF4D4F; color: white; box-shadow: 0 4px 10px rgba(255, 77, 79, 0.3); }
         
         .avatar { border-radius: 50%; object-fit: cover; background: #eee; flex-shrink: 0; border: 2px solid var(--bg-body); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         
@@ -314,6 +315,21 @@
     <div id="toastBox">
         <div class="toast-icon"><i class="ph-bold ph-check"></i></div>
         <span id="toastMsg">Success</span>
+    </div>
+
+    <div id="bannedModal" class="modal-overlay" style="z-index: 9999;">
+        <div class="modal-box" style="text-align: center; border: 2px solid #FF4D4F;">
+            <div style="color: #FF4D4F; font-size: 50px; margin-bottom: 10px;">
+                <i class="ph-fill ph-prohibit"></i>
+            </div>
+            <div class="modal-title" style="font-size: 22px; color: #FF4D4F;">Account Suspended</div>
+            <p style="color: var(--text-gray); margin-bottom: 20px; line-height: 1.5;">
+                Your account has been restricted due to a violation of our community guidelines.
+            </p>
+            <button class="btn btn-danger" onclick="auth.signOut(); window.location.reload();" style="width: 100%;">
+                <i class="ph-bold ph-sign-out"></i> Log Out
+            </button>
+        </div>
     </div>
 
     <div id="editModal" class="modal-overlay">
@@ -637,10 +653,12 @@
             db.collection('users').doc(user.uid).onSnapshot(doc => {
                 if(doc.exists) {
                     const data = doc.data();
+                    
+                    // 🔥 CHECK IF BANNED (New Modal System)
                     if (data.isBanned) {
-                        auth.signOut();
-                        alert("Your account has been suspended by Admin.");
-                        window.location.reload();
+                        document.getElementById('appInterface').style.display = 'none'; // Hide App
+                        document.getElementById('bannedModal').style.display = 'flex';  // Show Modal
+                        localStorage.removeItem('my_profile_data'); // Clear Data for safety
                         return;
                     }
                     
