@@ -902,7 +902,7 @@
         document.getElementById('notificationModal').style.display = 'none';
     };
 
-    // --- HELPER: Send Notification ---
+    // --- HELPER: Send Notification with DEBUG ---
     const sendNotification = (type, postId, recipientId) => {
         // Validation: Don't notify self, don't notify if recipient invalid
         if (!currentUser || !recipientId || recipientId === currentUser.uid) return; 
@@ -916,7 +916,14 @@
             postId: postId,
             isRead: false,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        }).catch(err => console.error("Noti Error:", err));
+        })
+        .then(() => {
+             // Optional: console.log("Noti sent success");
+        })
+        .catch(err => {
+             console.error("Noti Error:", err);
+             showToast("Error sending noti: " + err.message);
+        });
     };
 
     const markMessagesAsRead = (senderId) => {
@@ -1014,11 +1021,13 @@
                     const liveName = (userCache[p.uid]?.name) || p.authorName;
                     const livePhoto = (userCache[p.uid]?.photo) || p.authorPhoto;
 
-                    // 🔥 IMPORTANT: Pass p.uid as the last argument
+                    // 🔥 IMPORTANT: Check for p.uid existence to prevent errors
+                    const postAuthorId = p.uid || '';
+
                     container.innerHTML += `
                         <div class="post-card">
                             <div class="pc-header">
-                                <div class="pc-user" onclick="viewUserProfile('${p.uid}')">
+                                <div class="pc-user" onclick="viewUserProfile('${postAuthorId}')">
                                     <img src="${livePhoto}" class="avatar" style="width:40px; height:40px;">
                                     <div>
                                         <div class="pc-name">${liveName} ${adminIcon}</div>
@@ -1032,13 +1041,13 @@
                             
                             <div class="pc-stats">
                                 <span>${p.likes ? p.likes.length : 0} Likes</span>
-                                <span onclick="openOverlay('comment', '${p.id}', '', '${p.uid}')">${p.commentCount || 0} Comments</span>
+                                <span onclick="openOverlay('comment', '${p.id}', '', '${postAuthorId}')">${p.commentCount || 0} Comments</span>
                             </div>
                             <div class="pc-actions">
-                                <div class="pc-btn ${isLiked?'liked':''}" onclick="toggleLike('${p.id}', ${isLiked}, '${p.uid}')">
+                                <div class="pc-btn ${isLiked?'liked':''}" onclick="toggleLike('${p.id}', ${isLiked}, '${postAuthorId}')">
                                     <i class="${likeIcon}" style="font-size:20px;"></i> Like
                                 </div>
-                                <div class="pc-btn" onclick="openOverlay('comment', '${p.id}', '', '${p.uid}')">
+                                <div class="pc-btn" onclick="openOverlay('comment', '${p.id}', '', '${postAuthorId}')">
                                     <i class="ph ph-chat-circle" style="font-size:20px;"></i> Comment
                                 </div>
                                 <div class="pc-btn" onclick="sharePost('${plainText}')">
@@ -1071,7 +1080,10 @@
         });
 
         if (!loved) {
-            sendNotification('like', id, authorUid);
+            // Check if authorUid is valid
+            if (authorUid && authorUid !== 'undefined') {
+                sendNotification('like', id, authorUid);
+            }
         }
     };
 
@@ -1262,7 +1274,8 @@
                 });
                 await batch.commit();
 
-                if (activePostOwnerId) {
+                // Check if activePostOwnerId is valid before sending noti
+                if (activePostOwnerId && activePostOwnerId !== 'undefined') {
                     sendNotification('comment', activeTargetId, activePostOwnerId);
                 }
 
