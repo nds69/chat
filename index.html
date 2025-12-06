@@ -842,6 +842,22 @@
         }
     };
 
+    // 🔥 NEW FUNCTION: DELETE USER FROM DATABASE
+    window.deleteUserFromDB = (uid, name) => {
+        if(!myData.isAdmin) return;
+        
+        if(confirm(`⚠️ Warning: This will permanently delete ${name} from the database.\nAre you sure?`)) {
+            db.collection('users').doc(uid).delete()
+            .then(() => {
+                showToast(`User ${name} deleted!`);
+            })
+            .catch((error) => {
+                console.error("Error removing document: ", error);
+                alert("Error deleting user.");
+            });
+        }
+    };
+
     // --- FEED ---
     const loadFeed = () => {
         if(feedUnsubscribe) feedUnsubscribe(); 
@@ -928,10 +944,11 @@
         });
     };
 
-    // --- FRIENDS LIST ---
+    // --- FRIENDS LIST (UPDATED FOR DELETE BUTTON) ---
     const loadFriends = () => {
         if(!currentUser) return;
         document.getElementById('friendList').innerHTML = "<div style='text-align:center; padding:20px; color:var(--text-gray);'>Loading...</div>";
+        
         db.collection('users').onSnapshot(snap => {
             const list = document.getElementById('friendList');
             list.innerHTML = "";
@@ -946,13 +963,22 @@
                     foundOthers = true;
                     count++;
                     const isBanned = u.isBanned === true;
-                    let banBtn = '';
+                    
+                    // Admin Control Buttons (Ban & Delete)
+                    let adminActions = '';
                     if (myData.isAdmin) {
-                        banBtn = `
-                            <button onclick="event.stopPropagation(); toggleBanUser('${u.uid}', ${isBanned}, '${u.name}')" 
-                                class="btn" style="background:${isBanned ? '#4caf50' : '#ff4d4f'}; color:white; padding:5px 10px; font-size:12px; margin-left:10px;">
-                                ${isBanned ? 'Unban' : 'Ban'}
-                            </button>
+                        adminActions = `
+                            <div style="display:flex; gap:5px; margin-left:10px;">
+                                <button onclick="event.stopPropagation(); toggleBanUser('${u.uid}', ${isBanned}, '${u.name}')" 
+                                    class="btn" style="background:${isBanned ? '#4caf50' : '#ff9800'}; color:white; padding:5px 10px; font-size:12px;">
+                                    ${isBanned ? 'Unban' : 'Ban'}
+                                </button>
+                                
+                                <button onclick="event.stopPropagation(); deleteUserFromDB('${u.uid}', '${u.name}')" 
+                                    class="btn" style="background:#ff4d4f; color:white; padding:5px 10px; font-size:12px;">
+                                    <i class="ph-bold ph-trash"></i>
+                                </button>
+                            </div>
                         `;
                     }
                     
@@ -968,8 +994,8 @@
                             <div id="noti-${u.uid}" class="friend-noti-dot" 
                                  style="width:10px; height:10px; background:#FF4D4F; border-radius:50%; display:${showDot}; margin-right:10px;">
                             </div>
-                            ${banBtn}
-                            <i class="ph-fill ph-user-circle" style="color:var(--primary); font-size:24px;"></i>
+                            ${adminActions}
+                            ${!myData.isAdmin ? '<i class="ph-fill ph-user-circle" style="color:var(--primary); font-size:24px;"></i>' : ''}
                         </div>
                     `;
                 }
