@@ -196,7 +196,6 @@
         }
         .about-info { flex: 1; overflow: hidden; }
         .about-info h4 { margin: 0 0 4px 0; font-size: 13px; color: var(--text-gray); }
-        /* 🔥 FIX: Allow Bio Multiline Display */
         .about-info p { margin: 0; font-size: 15px; font-weight: 600; color: var(--text-main); white-space: pre-wrap; word-wrap: break-word; }
 
         /* --- GUEST CARD LAYOUT --- */
@@ -540,27 +539,28 @@
         if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; 
     }
 
-    // CONFIGURATION (ENCRYPTED)
-    // The following strings are Base64 encoded to obfuscate credentials from casual viewing.
-    
-    // firebaseConfig object encoded (with authDomain: social69.tak.today)
+    // ⚠️ CONFIGURATION (ENCRYPTED)
     const _0x1a2b = "eyJhcGlLZXkiOiJBSXphU3lDVXRlSWpPT1B4UFlyQ3V0RFNvOXQwY1Z0THFuR1RXeFUiLCJhdXRoRG9tYWluIjoic29jaWFsNjkudGFrLnRvZGF5IiwicHJvamVjdElkIjoiY2hhdC0yN2YyMSIsInN0b3JhZ2VCdWNrZXQiOiJjaGF0LTI3ZjIxLmZpcmViYXNlc3RvcmFnZS5hcHAiLCJtZXNzYWdpbmdTZW5kZXJJZCI6IjU4MjgxNDYxNjM5NiIsImFwcElkIjoiMTo1ODI4MTQ2MTYzOTY6d2ViOjI1MTY2MGUyYTUwNjM1YmM3MGRkZTkifQ==";
-    
-    // Admin Email encoded
     const _0x3c4d = "bW10aW50YXVuZ2toYWluZ0BnbWFpbC5jb20=";
 
-    // Helper function to decode Base64
     const _decode = (str) => decodeURIComponent(escape(window.atob(str)));
-
-    // Decode and parse back to original variables
     const firebaseConfig = JSON.parse(_decode(_0x1a2b));
     const ADMIN_EMAIL = _decode(_0x3c4d);
-
 
     // --- SETUP ---
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
+
+    // 🔥 ENABLE OFFLINE PERSISTENCE (Faster Loading)
+    db.enablePersistence()
+      .catch((err) => {
+          if (err.code == 'failed-precondition') {
+              console.log("Persistence failed: Multiple tabs open");
+          } else if (err.code == 'unimplemented') {
+              console.log("Persistence not supported by browser");
+          }
+      });
 
     let currentUser = null;
     let myData = {};
@@ -570,7 +570,6 @@
     let unsubOverlay = null;
     let feedUnsubscribe = null;
     let unreadListener = null;
-    let editingPostId = null;
     let unreadSenders = new Set();
     let userCache = {};
 
@@ -622,15 +621,19 @@
         }
     });
 
-    // --- AUTH ---
+    // --- AUTH & DATA LOADING ---
     auth.onAuthStateChanged(user => {
         if (user) {
-            // 🔥 FIX: Check local cache first to prevent flickering
-            if(userCache[user.uid]) {
-                myData = userCache[user.uid];
-                updateUI();
+            currentUser = user;
+            
+            // ✅ ၁။ Local Storage မှ အရင်ဆွဲထုတ်ပါ (Refresh လုပ်ရင် ချက်ချင်းပေါ်အောင်)
+            const localData = localStorage.getItem('my_profile_data');
+            if (localData) {
+                myData = JSON.parse(localData);
+                updateUI(); // ချက်ချင်းပြမယ်
             }
 
+            // ၂။ Server မှ Data အသစ်ထပ်စစ်မယ်
             db.collection('users').doc(user.uid).onSnapshot(doc => {
                 if(doc.exists) {
                     const data = doc.data();
@@ -640,8 +643,7 @@
                         window.location.reload();
                         return;
                     }
-                    currentUser = user;
-                    // 🔥 FIX: Ensure existing fields are prioritized over defaults
+                    
                     const newData = { 
                         name: data.name || user.displayName, 
                         photo: data.photo || user.photoURL, 
@@ -652,13 +654,11 @@
                         bio: data.bio || "Hello World",
                         website: data.website || ""
                     };
-                    
-                    // Only update if data actually changed to prevent loops
-                    if(JSON.stringify(myData) !== JSON.stringify(newData)) {
-                        myData = newData;
-                        userCache[user.uid] = myData; // Cache it
-                        updateUI(); 
-                    }
+
+                    // Data ပြောင်းမှ UI ပြင်မယ်၊ ပြီးရင် Local Storage မှာ သိမ်းမယ်
+                    myData = newData;
+                    localStorage.setItem('my_profile_data', JSON.stringify(myData)); // ✅ Save to Local
+                    updateUI(); 
 
                     document.getElementById('loggedInCreateBox').style.display = 'block';
                     document.getElementById('guestFeedBanner').style.display = 'none';
@@ -668,7 +668,7 @@
                     loadFriends();
                     startNotificationListener();
                 } else {
-                    // Only run this if the document DOES NOT exist
+                    // Profile မရှိသေးရင် အသစ်ဆောက်မယ်
                     myData = { 
                         name: user.displayName, photo: user.photoURL, 
                         uid: user.uid, email: user.email, 
@@ -678,12 +678,14 @@
                         website: ""
                     };
                     doc.ref.set(myData);
+                    localStorage.setItem('my_profile_data', JSON.stringify(myData));
                     updateUI();
                 }
             });
         } else {
             currentUser = null;
             myData = {};
+            localStorage.removeItem('my_profile_data'); // Logout ရင် ဖျက်မယ်
             if(unreadListener) unreadListener();
             document.getElementById('chatBadge').style.display = 'none';
 
@@ -702,15 +704,17 @@
     const loginGithub = () => auth.signInWithPopup(new firebase.auth.GithubAuthProvider()).catch(e => alert("Please enable GitHub in Firebase Console!"));
     
     const updateUI = () => {
-        if(!currentUser) return;
+        // UI Update လုပ်တာ သေချာအောင် Console မှာ စစ်မယ်
+        if(!myData || !currentUser) return;
+
         const pic = myData.photo || 'https://via.placeholder.com/100';
         ['myHeaderThumb', 'postThumb', 'profilePic'].forEach(id => {
             const el = document.getElementById(id);
             if(el) el.src = pic;
         });
-        document.getElementById('profileNameDisplay').innerText = myData.name;
         
-        // 🔥 FIX: Render Bio line breaks
+        // Name & Bio Update
+        document.getElementById('profileNameDisplay').innerText = myData.name || "User Name";
         document.getElementById('profileBio').innerText = myData.bio || 'No bio yet';
         
         const webEl = document.getElementById('profileWebsite');
@@ -742,7 +746,7 @@
         unreadListener = db.collection('messages')
             .where('receiverId', '==', currentUser.uid)
             .where('isRead', '==', false)
-            .limit(50) // Limit for speed
+            .limit(50) 
             .onSnapshot(snap => {
                 unreadSenders.clear();
                 snap.forEach(d => unreadSenders.add(d.data().sender));
@@ -757,7 +761,7 @@
                 });
 
             }, error => {
-                console.error("Notification listener error:", error);
+                console.error("Notification error:", error);
             });
     };
 
@@ -804,7 +808,7 @@
             document.getElementById('previewImg').src = "";
             showToast("Post Sent!");
         } catch(e) {
-            alert("Error: You might be banned or restricted.");
+            alert("Error posting.");
         }
     };
 
@@ -822,7 +826,7 @@
         if(feedUnsubscribe) feedUnsubscribe(); 
         feedUnsubscribe = db.collection('posts')
             .orderBy('timestamp', 'desc')
-            .limit(50) // 🔥 FIX: Optimized for Speed (Only load last 50)
+            .limit(50) 
             .onSnapshot(snap => {
                 const container = document.getElementById('feedContainer');
                 container.innerHTML = "";
@@ -911,7 +915,7 @@
             const list = document.getElementById('friendList');
             list.innerHTML = "";
             let foundOthers = false;
-            let count = 0; // 🔥 FIX: Count users
+            let count = 0;
             
             snap.forEach(d => { userCache[d.id] = d.data(); });
 
@@ -949,7 +953,7 @@
                     `;
                 }
             });
-            document.getElementById('friendCount').innerText = `(${count})`; // Show count
+            document.getElementById('friendCount').innerText = `(${count})`;
 
             if(!foundOthers) {
                 list.innerHTML = `<div style="text-align:center; padding:40px 20px; color:var(--text-gray);">
@@ -987,7 +991,7 @@
 
         const ref = mode === 'comment' 
             ? db.collection('comments').where('postId', '==', activeTargetId) 
-            : db.collection('messages').where('chatId', '==', activeTargetId).limit(50); // Limit chat too
+            : db.collection('messages').where('chatId', '==', activeTargetId).limit(50);
 
         unsubOverlay = ref.onSnapshot(snap => {
             let list = [];
@@ -1031,7 +1035,6 @@
                         </div>`;
                     } else {
                         const isMe = item.sender === currentUser.uid;
-                        // 🔥 FIX: Read Receipts Logic
                         const isRead = item.isRead === true;
                         const readIcon = isRead ? '<i class="ph-bold ph-checks read-blue"></i>' : '<i class="ph-bold ph-check"></i>';
                         const status = isMe ? `<div class="msg-status">${readIcon}</div>` : '';
@@ -1192,6 +1195,10 @@
         // 🔥 FIX: Optimistic Update (Prevent Reset Glitch)
         // Immediately update local state so UI doesn't flicker back
         myData = { ...myData, ...updateData };
+        
+        // Save to LocalStorage IMMEDIATELY
+        localStorage.setItem('my_profile_data', JSON.stringify(myData));
+        
         userCache[currentUser.uid] = myData;
         updateUI(); 
         closeProfileModal(); // Close immediately
