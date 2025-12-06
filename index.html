@@ -84,6 +84,14 @@
             position: sticky; top: 0; z-index: 1000; border-bottom: 1px solid var(--border-color);
         }
         .header-title { font-size: 20px; font-weight: 800; color: var(--primary); }
+        
+        /* 🔥 Header Icons Group */
+        .header-icons { display: flex; align-items: center; gap: 15px; }
+        .noti-btn { position: relative; cursor: pointer; color: var(--text-main); font-size: 24px; display: flex; align-items: center; }
+        .noti-dot-header { 
+            position: absolute; top: 0; right: 0; width: 10px; height: 10px; 
+            background: #FF4D4F; border-radius: 50%; border: 2px solid var(--bg-card); display: none;
+        }
 
         /* 🔥 Scrollable Content Wrapper */
         .content-wrapper { 
@@ -306,6 +314,17 @@
         }
         #toastBox.show { animation: toastSlide 0.5s forwards; }
         .toast-icon { background: var(--primary); width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+
+        /* 🔥 NOTIFICATION STYLES */
+        .noti-item { 
+            display: flex; gap: 10px; align-items: center; padding: 10px; 
+            border-bottom: 1px solid var(--border-color); cursor: pointer; 
+            transition: 0.2s;
+        }
+        .noti-item:active { background: var(--input-bg); }
+        .noti-item.unread { background: rgba(108, 93, 211, 0.05); }
+        .noti-content { font-size: 14px; color: var(--text-main); flex: 1; }
+        .noti-time { font-size: 11px; color: var(--text-gray); }
     </style>
 </head>
 <body>
@@ -329,6 +348,16 @@
             <button class="btn btn-danger" onclick="auth.signOut(); window.location.reload();" style="width: 100%;">
                 <i class="ph-bold ph-sign-out"></i> Log Out
             </button>
+        </div>
+    </div>
+
+    <div id="notificationModal" class="overlay-screen" style="z-index: 5000;">
+        <div class="os-header">
+            <i class="ph ph-arrow-left" style="font-size:24px; cursor:pointer;" onclick="closeNotifications()"></i>
+            <div class="os-title">Notifications</div>
+        </div>
+        <div id="notiBody" class="os-body">
+            <div style="text-align:center; padding:20px; color:var(--text-gray);">Loading...</div>
         </div>
     </div>
 
@@ -397,7 +426,14 @@
         <div class="header">
             <div class="header-title">Social69</div>
             
-            <img id="myHeaderThumb" class="avatar" style="width:35px; height:35px; cursor:pointer;" onclick="openProfileModal()">
+            <div class="header-icons">
+                <div class="noti-btn" onclick="openNotifications()">
+                    <i class="ph-fill ph-bell"></i>
+                    <div id="headerNotiBadge" class="noti-dot-header"></div>
+                </div>
+
+                <img id="myHeaderThumb" class="avatar" style="width:35px; height:35px; cursor:pointer;" onclick="openProfileModal()">
+            </div>
         </div>
 
         <div class="content-wrapper" id="contentArea">
@@ -591,6 +627,8 @@
     let unreadListener = null;
     let unreadSenders = new Set();
     let userCache = {};
+    let activePostOwnerId = null; // 🔥 To track post owner for notifications
+    let notiUnsubscribe = null; // 🔥 Noti Listener
 
     // --- THEME MANAGEMENT ---
     const checkTheme = () => {
@@ -688,6 +726,7 @@
 
                     loadFriends();
                     startNotificationListener();
+                    startHeaderNotiListener(); // 🔥 Start Bell Listener
                 } else {
                     // Profile မရှိသေးရင် အသစ်ဆောက်မယ်
                     myData = { 
@@ -708,7 +747,9 @@
             myData = {};
             localStorage.removeItem('my_profile_data'); // Logout ရင် ဖျက်မယ်
             if(unreadListener) unreadListener();
+            if(notiUnsubscribe) notiUnsubscribe();
             document.getElementById('chatBadge').style.display = 'none';
+            document.getElementById('headerNotiBadge').style.display = 'none';
 
             document.getElementById('loggedInCreateBox').style.display = 'none';
             document.getElementById('guestFeedBanner').style.display = 'block';
@@ -760,7 +801,7 @@
         }
     };
 
-    // --- NOTIFICATION SYSTEM ---
+    // --- NOTIFICATION SYSTEM (CHAT) ---
     const startNotificationListener = () => {
         if(unreadListener) unreadListener();
         
@@ -784,6 +825,87 @@
             }, error => {
                 console.error("Notification error:", error);
             });
+    };
+
+    // 🔥 --- HEADER NOTIFICATION SYSTEM (Likes/Comments) ---
+    const startHeaderNotiListener = () => {
+        if (notiUnsubscribe) notiUnsubscribe();
+        notiUnsubscribe = db.collection('notifications')
+            .where('recipientId', '==', currentUser.uid)
+            .where('isRead', '==', false)
+            .limit(20)
+            .onSnapshot(snap => {
+                const badge = document.getElementById('headerNotiBadge');
+                badge.style.display = snap.size > 0 ? 'block' : 'none';
+            });
+    };
+
+    window.openNotifications = () => {
+        if (!currentUser) return showToast("Please Login!");
+        document.getElementById('notificationModal').style.display = 'flex';
+        
+        const body = document.getElementById('notiBody');
+        body.innerHTML = '<div style="text-align:center; padding:20px;">Loading...</div>';
+
+        // Fetch notifications
+        db.collection('notifications')
+            .where('recipientId', '==', currentUser.uid)
+            .orderBy('timestamp', 'desc')
+            .limit(30)
+            .get()
+            .then(snap => {
+                if (snap.empty) {
+                    body.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-gray);">No notifications yet.</div>';
+                    return;
+                }
+
+                body.innerHTML = '';
+                const batch = db.batch();
+                let hasUnread = false;
+
+                snap.forEach(doc => {
+                    const n = doc.data();
+                    const isUnread = !n.isRead;
+                    if (isUnread) {
+                        batch.update(doc.ref, { isRead: true });
+                        hasUnread = true;
+                    }
+
+                    const icon = n.type === 'like' ? '<i class="ph-fill ph-heart" style="color:#FF4D4F;"></i>' : '<i class="ph-fill ph-chat-circle" style="color:#6C5DD3;"></i>';
+                    const text = n.type === 'like' ? 'liked your post.' : 'commented on your post.';
+                    
+                    body.innerHTML += `
+                        <div class="noti-item ${isUnread ? 'unread' : ''}" onclick="openOverlay('comment', '${n.postId}')">
+                            <img src="${n.senderPhoto || 'https://via.placeholder.com/40'}" class="avatar" style="width:40px; height:40px;">
+                            <div class="noti-content">
+                                <strong>${n.senderName}</strong> ${text}
+                            </div>
+                            <div style="font-size:16px;">${icon}</div>
+                        </div>
+                    `;
+                });
+
+                if (hasUnread) batch.commit();
+            });
+    };
+
+    window.closeNotifications = () => {
+        document.getElementById('notificationModal').style.display = 'none';
+    };
+
+    // --- HELPER: Send Notification ---
+    const sendNotification = (type, postId, recipientId) => {
+        if (!currentUser || recipientId === currentUser.uid) return; // Don't notify self
+        db.collection('notifications').add({
+            recipientId: recipientId,
+            senderId: currentUser.uid,
+            senderName: myData.name,
+            senderPhoto: myData.photo,
+            type: type, // 'like' or 'comment'
+            postId: postId,
+            isRead: false,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
     };
 
     const markMessagesAsRead = (senderId) => {
@@ -842,19 +964,12 @@
         }
     };
 
-    // 🔥 NEW FUNCTION: DELETE USER FROM DATABASE
     window.deleteUserFromDB = (uid, name) => {
         if(!myData.isAdmin) return;
-        
         if(confirm(`⚠️ Warning: This will permanently delete ${name} from the database.\nAre you sure?`)) {
             db.collection('users').doc(uid).delete()
-            .then(() => {
-                showToast(`User ${name} deleted!`);
-            })
-            .catch((error) => {
-                console.error("Error removing document: ", error);
-                alert("Error deleting user.");
-            });
+            .then(() => { showToast(`User ${name} deleted!`); })
+            .catch((error) => { console.error("Error removing document: ", error); alert("Error deleting user."); });
         }
     };
 
@@ -888,6 +1003,7 @@
                     const liveName = (userCache[p.uid]?.name) || p.authorName;
                     const livePhoto = (userCache[p.uid]?.photo) || p.authorPhoto;
 
+                    // 🔥 Pass p.uid to toggleLike and openOverlay for notifications
                     container.innerHTML += `
                         <div class="post-card">
                             <div class="pc-header">
@@ -905,13 +1021,13 @@
                             
                             <div class="pc-stats">
                                 <span>${p.likes ? p.likes.length : 0} Likes</span>
-                                <span onclick="openOverlay('comment', '${p.id}')">${p.commentCount || 0} Comments</span>
+                                <span onclick="openOverlay('comment', '${p.id}', '', '${p.uid}')">${p.commentCount || 0} Comments</span>
                             </div>
                             <div class="pc-actions">
-                                <div class="pc-btn ${isLiked?'liked':''}" onclick="toggleLike('${p.id}', ${isLiked})">
+                                <div class="pc-btn ${isLiked?'liked':''}" onclick="toggleLike('${p.id}', ${isLiked}, '${p.uid}')">
                                     <i class="${likeIcon}" style="font-size:20px;"></i> Like
                                 </div>
-                                <div class="pc-btn" onclick="openOverlay('comment', '${p.id}')">
+                                <div class="pc-btn" onclick="openOverlay('comment', '${p.id}', '', '${p.uid}')">
                                     <i class="ph ph-chat-circle" style="font-size:20px;"></i> Comment
                                 </div>
                                 <div class="pc-btn" onclick="sharePost('${plainText}')">
@@ -937,11 +1053,16 @@
         }
     };
     
-    const toggleLike = (id, loved) => {
+    // 🔥 Updated toggleLike to send Notification
+    const toggleLike = (id, loved, authorUid) => {
         if(!currentUser) return showToast("Please Login to Like!");
         db.collection('posts').doc(id).update({
             likes: loved ? firebase.firestore.FieldValue.arrayRemove(currentUser.uid) : firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
         });
+
+        if (!loved) {
+            sendNotification('like', id, authorUid);
+        }
     };
 
     // --- FRIENDS LIST (UPDATED FOR DELETE BUTTON) ---
@@ -1012,7 +1133,8 @@
     };
 
     // --- OVERLAY (CHAT & COMMENTS) ---
-    window.openOverlay = (mode, targetId, name = '') => {
+    // 🔥 Updated to capture Post Owner ID for notifications
+    window.openOverlay = (mode, targetId, name = '', ownerId = null) => {
         if(!currentUser) return showToast("Please Login First!");
         
         overlayMode = mode;
@@ -1026,11 +1148,13 @@
             chatReceiverId = targetId;
             activeTargetId = [currentUser.uid, targetId].sort().join("_");
             title.innerText = name || "Chat";
+            activePostOwnerId = null; 
             markMessagesAsRead(targetId);
         } else {
             chatReceiverId = null;
             activeTargetId = targetId; 
             title.innerText = "Comments";
+            activePostOwnerId = ownerId; // Save for notification
         }
         
         body.innerHTML = '<div style="text-align:center; padding:20px;">Loading...</div>';
@@ -1129,6 +1253,12 @@
                     commentCount: firebase.firestore.FieldValue.increment(1)
                 });
                 await batch.commit();
+
+                // 🔥 Trigger Notification for Comment
+                if (activePostOwnerId) {
+                    sendNotification('comment', activeTargetId, activePostOwnerId);
+                }
+
             } else {
                 await db.collection('messages').add({
                     chatId: activeTargetId,
