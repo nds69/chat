@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Social69</title>
     
+<link rel="manifest" href="manifest.json">
+
+<meta name="theme-color" content="#6C5DD3">
+
+<link rel="icon" href="app_logo.png" type="image/png"> 
+
+<link rel="apple-touch-icon" href="app_logo.png">
+
+
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script> 
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
@@ -1301,7 +1310,20 @@
         });
 
         document.getElementById('viewUserModal').style.display = 'flex';
-    };
+   };
+
+        // --- PWA SERVICE WORKER REGISTRATION ---
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./service-worker.js')
+                .then(registration => {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                })
+                .catch(err => {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+        });
+    }
 </script>
 </body>
 </html>
