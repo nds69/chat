@@ -159,6 +159,11 @@
         .bubble-other { background: var(--bg-card); color: var(--text-main); align-self: flex-start; border-bottom-left-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .bubble-other .bubble-name { color: var(--text-gray); }
 
+        /* Read Receipt Style */
+        .msg-status { font-size: 10px; align-self: flex-end; margin-top: 2px; color: rgba(255,255,255,0.7); display:flex; gap:2px;}
+        .msg-status i { font-size: 12px; }
+        .read-blue { color: #87CEEB !important; }
+
         /* --- Friend List Item --- */
         .friend-card { background: var(--bg-card); padding: 15px; border-radius: 15px; display: flex; align-items: center; gap: 15px; margin-bottom: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); cursor: pointer;}
         
@@ -191,7 +196,8 @@
         }
         .about-info { flex: 1; overflow: hidden; }
         .about-info h4 { margin: 0 0 4px 0; font-size: 13px; color: var(--text-gray); }
-        .about-info p { margin: 0; font-size: 15px; font-weight: 600; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        /* 🔥 FIX: Allow Bio Multiline Display */
+        .about-info p { margin: 0; font-size: 15px; font-weight: 600; color: var(--text-main); white-space: pre-wrap; word-wrap: break-word; }
 
         /* --- GUEST CARD LAYOUT --- */
         #profile-guest-view {
@@ -274,7 +280,7 @@
         }
         #viewUserModal .user-bio-display {
             text-align: center; font-size: 14px; color: var(--text-gray); margin-bottom: 15px;
-            padding: 0 10px; line-height: 1.4;
+            padding: 0 10px; line-height: 1.4; white-space: pre-wrap;
         }
         #viewUserModal .user-web-display {
             text-align: center; margin-bottom: 20px; font-size: 14px;
@@ -343,7 +349,7 @@
 
             <div class="input-group">
                 <label>Bio</label>
-                <input type="text" id="modalEditBio" class="post-input" placeholder="Short description...">
+                <textarea id="modalEditBio" class="post-input" rows="3" placeholder="Tell something about yourself..."></textarea>
             </div>
 
             <div class="input-group">
@@ -407,7 +413,7 @@
             </div>
 
             <div id="tab-friends" class="tab-page">
-                <h3 style="margin:0 0 15px 0;">People</h3>
+                <h3 style="margin:0 0 15px 0;">People <span id="friendCount" style="color:var(--primary); font-size:16px;"></span></h3>
                 <div id="friendList">
                     <div style="text-align:center; padding:20px; color:var(--text-gray);">Loading...</div>
                 </div>
@@ -619,6 +625,12 @@
     // --- AUTH ---
     auth.onAuthStateChanged(user => {
         if (user) {
+            // 🔥 FIX: Check local cache first to prevent flickering
+            if(userCache[user.uid]) {
+                myData = userCache[user.uid];
+                updateUI();
+            }
+
             db.collection('users').doc(user.uid).onSnapshot(doc => {
                 if(doc.exists) {
                     const data = doc.data();
@@ -630,7 +642,7 @@
                     }
                     currentUser = user;
                     // 🔥 FIX: Ensure existing fields are prioritized over defaults
-                    myData = { 
+                    const newData = { 
                         name: data.name || user.displayName, 
                         photo: data.photo || user.photoURL, 
                         uid: user.uid, 
@@ -640,13 +652,19 @@
                         bio: data.bio || "Hello World",
                         website: data.website || ""
                     };
+                    
+                    // Only update if data actually changed to prevent loops
+                    if(JSON.stringify(myData) !== JSON.stringify(newData)) {
+                        myData = newData;
+                        userCache[user.uid] = myData; // Cache it
+                        updateUI(); 
+                    }
 
                     document.getElementById('loggedInCreateBox').style.display = 'block';
                     document.getElementById('guestFeedBanner').style.display = 'none';
                     document.getElementById('profile-guest-view').style.display = 'none'; 
                     document.getElementById('profile-user-view').style.display = 'block'; 
 
-                    updateUI(); 
                     loadFriends();
                     startNotificationListener();
                 } else {
@@ -692,6 +710,7 @@
         });
         document.getElementById('profileNameDisplay').innerText = myData.name;
         
+        // 🔥 FIX: Render Bio line breaks
         document.getElementById('profileBio').innerText = myData.bio || 'No bio yet';
         
         const webEl = document.getElementById('profileWebsite');
@@ -723,6 +742,7 @@
         unreadListener = db.collection('messages')
             .where('receiverId', '==', currentUser.uid)
             .where('isRead', '==', false)
+            .limit(50) // Limit for speed
             .onSnapshot(snap => {
                 unreadSenders.clear();
                 snap.forEach(d => unreadSenders.add(d.data().sender));
@@ -802,6 +822,7 @@
         if(feedUnsubscribe) feedUnsubscribe(); 
         feedUnsubscribe = db.collection('posts')
             .orderBy('timestamp', 'desc')
+            .limit(50) // 🔥 FIX: Optimized for Speed (Only load last 50)
             .onSnapshot(snap => {
                 const container = document.getElementById('feedContainer');
                 container.innerHTML = "";
@@ -890,6 +911,7 @@
             const list = document.getElementById('friendList');
             list.innerHTML = "";
             let foundOthers = false;
+            let count = 0; // 🔥 FIX: Count users
             
             snap.forEach(d => { userCache[d.id] = d.data(); });
 
@@ -897,6 +919,7 @@
                 const u = d.data();
                 if(u.uid !== currentUser.uid) {
                     foundOthers = true;
+                    count++;
                     const isBanned = u.isBanned === true;
                     let banBtn = '';
                     if (myData.isAdmin) {
@@ -926,6 +949,8 @@
                     `;
                 }
             });
+            document.getElementById('friendCount').innerText = `(${count})`; // Show count
+
             if(!foundOthers) {
                 list.innerHTML = `<div style="text-align:center; padding:40px 20px; color:var(--text-gray);">
                     <i class="ph ph-users" style="font-size:40px; opacity:0.5; margin-bottom:10px;"></i><br>
@@ -962,7 +987,7 @@
 
         const ref = mode === 'comment' 
             ? db.collection('comments').where('postId', '==', activeTargetId) 
-            : db.collection('messages').where('chatId', '==', activeTargetId);
+            : db.collection('messages').where('chatId', '==', activeTargetId).limit(50); // Limit chat too
 
         unsubOverlay = ref.onSnapshot(snap => {
             let list = [];
@@ -1006,10 +1031,16 @@
                         </div>`;
                     } else {
                         const isMe = item.sender === currentUser.uid;
+                        // 🔥 FIX: Read Receipts Logic
+                        const isRead = item.isRead === true;
+                        const readIcon = isRead ? '<i class="ph-bold ph-checks read-blue"></i>' : '<i class="ph-bold ph-check"></i>';
+                        const status = isMe ? `<div class="msg-status">${readIcon}</div>` : '';
+
                         return `
                         <div style="display:flex; flex-direction:column; margin-bottom:5px; align-items:${isMe?'flex-end':'flex-start'}">
                             <div class="bubble ${isMe ? 'bubble-me' : 'bubble-other'}">
                                 <span class="bubble-content">${txt}</span>
+                                ${status}
                             </div>
                         </div>`;
                     }
@@ -1158,14 +1189,16 @@
             updateData.photo = newPhotoSrc;
         }
 
+        // 🔥 FIX: Optimistic Update (Prevent Reset Glitch)
+        // Immediately update local state so UI doesn't flicker back
+        myData = { ...myData, ...updateData };
+        userCache[currentUser.uid] = myData;
+        updateUI(); 
+        closeProfileModal(); // Close immediately
+
         // 🔥 FIX: Use merge:true to ensure other fields are not wiped
         db.collection('users').doc(currentUser.uid).set(updateData, { merge: true }).then(() => {
             showToast("Profile Updated!");
-            // Manually update local myData just in case snapshot lags
-            myData = { ...myData, ...updateData };
-            userCache[currentUser.uid] = { ...userCache[currentUser.uid], ...updateData };
-            updateUI(); 
-            closeProfileModal();
         }).catch(err => {
             console.error(err);
             alert("Error saving profile. Image might still be too large.");
