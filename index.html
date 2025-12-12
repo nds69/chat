@@ -837,7 +837,7 @@
             });
     };
 
-    // 🔥 UPDATED: Index-Free Fetch (Sort in JS) & Close Noti Modal on Click
+    // 🔥 UPDATED: Notification Click Fix
     window.openNotifications = () => {
         if (!currentUser) return showToast("Please Login!");
         document.getElementById('notificationModal').style.display = 'flex';
@@ -845,7 +845,7 @@
         const body = document.getElementById('notiBody');
         body.innerHTML = '<div style="text-align:center; padding:20px;">Loading...</div>';
 
-        // Fetch notifications (No OrderBy to avoid Index Error)
+        // Fetch notifications
         db.collection('notifications')
             .where('recipientId', '==', currentUser.uid)
             .limit(50)
@@ -871,11 +871,11 @@
                     }
                 });
 
-                // 🔥 SORT IN JS (Fixes Index Missing Error)
+                // Sort by time (Newest first)
                 notis.sort((a, b) => {
                     const tA = a.timestamp ? a.timestamp.toMillis() : 0;
                     const tB = b.timestamp ? b.timestamp.toMillis() : 0;
-                    return tB - tA; // Descending
+                    return tB - tA; 
                 });
 
                 body.innerHTML = '';
@@ -883,7 +883,7 @@
                     const icon = n.type === 'like' ? '<i class="ph-fill ph-heart" style="color:#FF4D4F;"></i>' : '<i class="ph-fill ph-chat-circle" style="color:#6C5DD3;"></i>';
                     const text = n.type === 'like' ? 'liked your post.' : 'commented on your post.';
                     
-                    // 🔥 FIX: Added closeNotifications() here
+                    // 🔥 FIX: Like ဖြစ်စေ Comment ဖြစ်စေ နှိပ်လိုက်ရင် Post Overlay ပွင့်အောင် လုပ်ထားပါတယ်
                     body.innerHTML += `
                         <div class="noti-item" onclick="closeNotifications(); openOverlay('comment', '${n.postId}', '', '${n.senderId}')">
                             <img src="${n.senderPhoto || 'https://via.placeholder.com/40'}" class="avatar" style="width:40px; height:40px;">
