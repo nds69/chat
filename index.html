@@ -1125,7 +1125,6 @@
                                 <div>${editBtn}${delBtn}</div>
                             </div>
                             
-                            <!-- Content containers for truncation -->
                             <div id="content-container-${p.id}" data-post-text="${plainText}"></div>
                             <div id="see-more-btn-container-${p.id}"></div>
                             
@@ -1166,7 +1165,8 @@
     };
     
     /**
-     * Deletes post and cleans up related data (Comments & Notifications).
+     * 🔥 MODIFIED: Deletes post and cleans up related data (Comments & Notifications) SEQUENTIALLY.
+     * This avoids batch write issues caused by complex security rules.
      * @param {string} id Post ID
      */
     window.deletePost = async (id) => {
@@ -1174,27 +1174,30 @@
         if(!confirm("Delete this post? This will also permanently remove all associated comments and notifications (likes/comments).")) return;
         
         try {
-            const batch = db.batch();
-            const postRef = db.collection('posts').doc(id);
+            const postId = id;
+
+            // 1. Delete all related Notifications (Likes and Comments) SEQUENTIALLY
+            // We use a for...of loop to ensure sequential asynchronous deletion
+            const notiSnap = await db.collection('notifications').where('postId', '==', postId).get();
+            for (const doc of notiSnap.docs) {
+                await doc.ref.delete();
+            }
             
-            // 1. Delete all related Comments
-            const commentsSnap = await db.collection('comments').where('postId', '==', id).get();
-            commentsSnap.forEach(doc => batch.delete(doc.ref));
-
-            // 2. Delete all related Notifications (Likes and Comments)
-            const notiSnap = await db.collection('notifications').where('postId', '==', id).get();
-            notiSnap.forEach(doc => batch.delete(doc.ref));
-
+            // 2. Delete all related Comments SEQUENTIALLY
+            const commentsSnap = await db.collection('comments').where('postId', '==', postId).get();
+            for (const doc of commentsSnap.docs) {
+                await doc.ref.delete();
+            }
+            
             // 3. Delete the main post
-            batch.delete(postRef); 
-
-            // Execute the batch operation
-            await batch.commit();
+            await db.collection('posts').doc(postId).delete();
+            
             showToast("Post and related data deleted successfully!");
             
         } catch(e) {
-            console.error("Error during post cleanup (Possible Security Rule Issue):", e);
-            showToast("Post Delete Failed. You might lack permissions (not owner/admin) or the database rule is restrictive.");
+            console.error("Error during post cleanup (Possible Security Rule/Permission Issue):", e);
+            // Revert error message to match user expectation/image for clarity
+            showToast("Error deleting post and related data. You might be banned or database issue.");
         }
     };
     
@@ -1574,4 +1577,3 @@
 </script>
 </body>
 </html>
-
