@@ -1017,7 +1017,7 @@
         }
     };
     
-    // --- POST TRUNCATION LOGIC (NEW) ---
+    // --- POST TRUNCATION LOGIC ---
     const MAX_POST_LENGTH = 150; // Max characters before truncation
     const MAX_POST_LINES = 3;    // Max lines before truncation
 
@@ -1125,8 +1125,10 @@
                                 <div>${editBtn}${delBtn}</div>
                             </div>
                             
+                            <!-- Content containers for truncation -->
                             <div id="content-container-${p.id}" data-post-text="${plainText}"></div>
                             <div id="see-more-btn-container-${p.id}"></div>
+                            
                             ${p.image ? `<img src="${p.image}" class="pc-img">` : ''}
                             
                             <div class="pc-stats">
@@ -1150,7 +1152,7 @@
                 
                 container.innerHTML = postHtml.join('');
 
-                // 🔥 NEW: Call truncation logic after all HTML is injected
+                // Call truncation logic after all HTML is injected
                 snap.forEach(d => {
                     const p = {id: d.id, ...d.data()};
                     const containerEl = document.getElementById(`content-container-${p.id}`);
@@ -1168,6 +1170,7 @@
      * @param {string} id Post ID
      */
     window.deletePost = async (id) => {
+        if (!currentUser) return showToast("Please login to perform this action.");
         if(!confirm("Delete this post? This will also permanently remove all associated comments and notifications (likes/comments).")) return;
         
         try {
@@ -1187,11 +1190,11 @@
 
             // Execute the batch operation
             await batch.commit();
-            showToast("Post and related data deleted!");
+            showToast("Post and related data deleted successfully!");
             
         } catch(e) {
-            console.error("Error during post cleanup:", e);
-            showToast("Error deleting post and related data. You might be banned or database issue.");
+            console.error("Error during post cleanup (Possible Security Rule Issue):", e);
+            showToast("Post Delete Failed. You might lack permissions (not owner/admin) or the database rule is restrictive.");
         }
     };
     
@@ -1445,11 +1448,21 @@
         editingPostId = null; 
     };
     
+    // 🔥 UPDATED: Added Auth Check and improved error handling
     window.saveEditPost = () => {
+        if (!currentUser) return showToast("Please login to perform this action.");
+        
         const newText = document.getElementById('editModalInput').value;
         if(editingPostId && newText) {
             db.collection('posts').doc(editingPostId).update({ text: newText })
-            .then(() => { closeEditModal(); showToast("Post updated!"); });
+            .then(() => { 
+                closeEditModal(); 
+                showToast("Post updated!"); 
+            })
+            .catch(e => {
+                console.error("Edit Failed:", e);
+                showToast("Post Edit Failed. Check if you are the owner or admin.");
+            });
         }
     };
     
@@ -1561,3 +1574,4 @@
 </script>
 </body>
 </html>
+
