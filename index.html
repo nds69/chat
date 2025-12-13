@@ -653,7 +653,7 @@
     let userCache = {};
     let activePostOwnerId = null; 
     let notiUnsubscribe = null; 
-    let editingPostId = null; // Defined for Edit Post Modal
+    let editingPostId = null;
 
     // --- THEME MANAGEMENT ---
     const checkTheme = () => {
@@ -846,12 +846,11 @@
     };
 
     // 🔥 --- HEADER NOTIFICATION SYSTEM (Likes/Comments) ---
-    // 🔥 UPDATED: Index-Free Listener (Manual Filter)
     const startHeaderNotiListener = () => {
         if (notiUnsubscribe) notiUnsubscribe();
         notiUnsubscribe = db.collection('notifications')
             .where('recipientId', '==', currentUser.uid)
-            .limit(20) // Get last 20, check if any unread
+            .limit(20)
             .onSnapshot(snap => {
                 let hasUnread = false;
                 snap.forEach(d => {
@@ -908,7 +907,6 @@
                     const icon = n.type === 'like' ? '<i class="ph-fill ph-heart" style="color:#FF4D4F;"></i>' : '<i class="ph-fill ph-chat-circle" style="color:#6C5DD3;"></i>';
                     const text = n.type === 'like' ? 'liked your post.' : 'commented on your post.';
                     
-                    // 🔥 FIX: Like ဖြစ်စေ Comment ဖြစ်စေ နှိပ်လိုက်ရင် Post Overlay ပွင့်အောင် လုပ်ထားပါတယ်
                     body.innerHTML += `
                         <div class="noti-item" onclick="closeNotifications(); openOverlay('comment', '${n.postId}', '', '${n.senderId}')">
                             <img src="${n.senderPhoto || 'https://via.placeholder.com/40'}" class="avatar" style="width:40px; height:40px;">
@@ -930,7 +928,6 @@
 
     // --- HELPER: Send Notification with DEBUG ---
     const sendNotification = (type, postId, recipientId) => {
-        // Validation: Don't notify self, don't notify if recipient invalid
         if (!currentUser || !recipientId || recipientId === currentUser.uid) return; 
 
         db.collection('notifications').add({
@@ -938,7 +935,7 @@
             senderId: currentUser.uid,
             senderName: myData.name || 'User',
             senderPhoto: myData.photo || '',
-            type: type, // 'like' or 'comment'
+            type: type,
             postId: postId,
             isRead: false,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
@@ -1017,9 +1014,9 @@
         }
     };
     
-    // --- POST TRUNCATION LOGIC ---
-    const MAX_POST_LENGTH = 150; // Max characters before truncation
-    const MAX_POST_LINES = 3;    // Max lines before truncation
+    // --- POST TRUNCATION LOGIC (NEW) ---
+    const MAX_POST_LENGTH = 150;
+    const MAX_POST_LINES = 3;
 
     /**
      * Truncates post text and adds 'See More' button.
@@ -1031,19 +1028,16 @@
         const btnEl = document.getElementById(`see-more-btn-container-${postId}`);
         const clickableText = makeLinksClickable(text || '');
 
-        // Inject HTML structure first
         textEl.innerHTML = `<div class="pc-text" id="text-body-${postId}">${clickableText}</div>`;
         
         const textBodyEl = document.getElementById(`text-body-${postId}`);
         
-        // Use a hidden element to measure the number of lines
         const lineMeasure = document.createElement('div');
         lineMeasure.style.cssText = 'visibility: hidden; position: absolute; height: auto; width: 90%; font-size: 15px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word;';
         lineMeasure.innerHTML = clickableText;
         document.body.appendChild(lineMeasure);
         
-        // Calculate line height and total height
-        const lineHeight = 1.5 * 15; // Assuming font-size 15px, line-height 1.5
+        const lineHeight = 1.5 * 15;
         const totalHeight = lineMeasure.offsetHeight;
         const lineCount = Math.round(totalHeight / lineHeight);
 
@@ -1074,133 +1068,56 @@
             btnEl.innerHTML = `<span class="see-more-btn" onclick="togglePostContent('${postId}')">...See more</span>`;
         }
     };
-    // --- END POST TRUNCATION LOGIC ---
-
-    // --- FEED ---
-    const loadFeed = () => {
-        if(feedUnsubscribe) feedUnsubscribe(); 
-        feedUnsubscribe = db.collection('posts')
-            .orderBy('timestamp', 'desc')
-            .limit(50) 
-            .onSnapshot(snap => {
-                const container = document.getElementById('feedContainer');
-                container.innerHTML = "";
-                let postHtml = [];
-                
-                snap.forEach(d => {
-                    const p = {id: d.id, ...d.data()};
-                    const isLiked = currentUser && p.likes && p.likes.includes(currentUser.uid);
-                    const likeIcon = isLiked ? 'ph-fill ph-heart' : 'ph ph-heart';
-                    const adminIcon = p.isAdmin ? `<i class="ph-fill ph-seal-check admin-badge"></i>` : '';
-                    
-                    const isOwner = currentUser && (currentUser.uid === p.uid || myData.isAdmin);
-                    
-                    const delBtn = isOwner ? `<i class="ph ph-trash" onclick="deletePost('${p.id}')" style="color:#ff4d4f;cursor:pointer;"></i>` : '';
-                    
-                    // Passing post text to openEditModal directly
-                    // Escaping quotes for HTML attribute safety
-                    const plainText = (p.text || '').replace(/"/g, '&quot;');
-                    const editBtn = isOwner ? `<i class="ph ph-pencil-simple" onclick="openEditModal('${p.id}', '${plainText}')" style="color:#6C5DD3;cursor:pointer;margin-right:10px;"></i>` : '';
-                    
-                    let timeDisplay = "Just now";
-                    if(p.timestamp) {
-                        const date = p.timestamp.toDate();
-                        timeDisplay = date.toLocaleDateString() + " " + date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-                    }
-                    
-                    const liveName = (userCache[p.uid]?.name) || p.authorName;
-                    const livePhoto = (userCache[p.uid]?.photo) || p.authorPhoto;
-                    const postAuthorId = p.uid || '';
-
-                    postHtml.push(`
-                        <div class="post-card">
-                            <div class="pc-header">
-                                <div class="pc-user" onclick="viewUserProfile('${postAuthorId}')">
-                                    <img src="${livePhoto}" class="avatar" style="width:40px; height:40px;">
-                                    <div>
-                                        <div class="pc-name">${liveName} ${adminIcon}</div>
-                                        <div class="pc-time">${timeDisplay}</div>
-                                    </div>
-                                </div>
-                                <div>${editBtn}${delBtn}</div>
-                            </div>
-                            
-                            <div id="content-container-${p.id}" data-post-text="${plainText}"></div>
-                            <div id="see-more-btn-container-${p.id}"></div>
-                            
-                            ${p.image ? `<img src="${p.image}" class="pc-img">` : ''}
-                            
-                            <div class="pc-stats">
-                                <span>${p.likes ? p.likes.length : 0} Likes</span>
-                                <span onclick="openOverlay('comment', '${p.id}', '', '${postAuthorId}')">${p.commentCount || 0} Comments</span>
-                            </div>
-                            <div class="pc-actions">
-                                <div class="pc-btn ${isLiked?'liked':''}" onclick="toggleLike('${p.id}', ${isLiked}, '${postAuthorId}')">
-                                    <i class="${likeIcon}" style="font-size:20px;"></i> Like
-                                </div>
-                                <div class="pc-btn" onclick="openOverlay('comment', '${p.id}', '', '${postAuthorId}')">
-                                    <i class="ph ph-chat-circle" style="font-size:20px;"></i> Comment
-                                </div>
-                                <div class="pc-btn" onclick="sharePost('${plainText}')">
-                                    <i class="ph ph-share-network" style="font-size:20px;"></i> Share
-                                </div>
-                            </div>
-                        </div>
-                    `);
-                });
-                
-                container.innerHTML = postHtml.join('');
-
-                // Call truncation logic after all HTML is injected
-                snap.forEach(d => {
-                    const p = {id: d.id, ...d.data()};
-                    const containerEl = document.getElementById(`content-container-${p.id}`);
-                    if (containerEl) {
-                        // Decode quotes back to normal text
-                        const text = containerEl.getAttribute('data-post-text').replace(/&quot;/g, '"');
-                        truncatePostText(p.id, text);
-                    }
-                });
-            });
-    };
     
-    /**
-     * 🔥 MODIFIED: Deletes post and cleans up related data (Comments & Notifications) SEQUENTIALLY.
-     * This avoids batch write issues caused by complex security rules.
-     * @param {string} id Post ID
-     */
+    // 🔥 FIXED: DELETE POST FUNCTION - IMPROVED ERROR HANDLING
     window.deletePost = async (id) => {
-        if (!currentUser) return showToast("Please login to perform this action.");
         if(!confirm("Delete this post? This will also permanently remove all associated comments and notifications (likes/comments).")) return;
         
+        // Check if user is banned
+        if (myData.isBanned) {
+            showToast("Your account is suspended. Cannot delete posts.");
+            return;
+        }
+        
         try {
-            const postId = id;
-
-            // 1. Delete all related Notifications (Likes and Comments) SEQUENTIALLY
-            // We use a for...of loop to ensure sequential asynchronous deletion
-            const notiSnap = await db.collection('notifications').where('postId', '==', postId).get();
-            for (const doc of notiSnap.docs) {
-                await doc.ref.delete();
-            }
+            // 1. First, get all related data
+            const commentsSnap = await db.collection('comments').where('postId', '==', id).get();
+            const notiSnap = await db.collection('notifications').where('postId', '==', id).get();
             
-            // 2. Delete all related Comments SEQUENTIALLY
-            const commentsSnap = await db.collection('comments').where('postId', '==', postId).get();
-            for (const doc of commentsSnap.docs) {
-                await doc.ref.delete();
-            }
+            // 2. Delete comments one by one
+            const commentDeletes = [];
+            commentsSnap.forEach(doc => {
+                commentDeletes.push(doc.ref.delete());
+            });
             
-            // 3. Delete the main post
-            await db.collection('posts').doc(postId).delete();
+            // 3. Delete notifications one by one
+            const notiDeletes = [];
+            notiSnap.forEach(doc => {
+                notiDeletes.push(doc.ref.delete());
+            });
+            
+            // 4. Delete the post
+            const postDelete = db.collection('posts').doc(id).delete();
+            
+            // 5. Wait for all deletions to complete
+            await Promise.all([...commentDeletes, ...notiDeletes, postDelete]);
             
             showToast("Post and related data deleted successfully!");
             
         } catch(e) {
-            console.error("Error during post cleanup (Possible Security Rule/Permission Issue):", e);
-            // Revert error message to match user expectation/image for clarity
-            showToast("Error deleting post and related data. You might be banned or database issue.");
+            console.error("Error during post cleanup:", e);
+            
+            // Specific error messages
+            if (e.code === 'permission-denied') {
+                showToast("Permission denied. You may not have rights to delete.");
+            } else if (e.message.includes('banned')) {
+                showToast("Cannot delete: Account restricted.");
+            } else {
+                showToast("Error deleting post. Please try again.");
+            }
         }
     };
-    
+
     const toggleLike = (id, loved, authorUid) => {
         if(!currentUser) return showToast("Please Login to Like!");
         db.collection('posts').doc(id).update({
@@ -1208,7 +1125,6 @@
         });
 
         if (!loved) {
-            // Check if authorUid is valid
             if (authorUid && authorUid !== 'undefined') {
                 sendNotification('like', id, authorUid);
             }
@@ -1402,7 +1318,6 @@
                 });
                 await batch.commit();
 
-                // Check if activePostOwnerId is valid before sending noti
                 if (activePostOwnerId && activePostOwnerId !== 'undefined') {
                     sendNotification('comment', activeTargetId, activePostOwnerId);
                 }
@@ -1439,10 +1354,29 @@
 
     // --- EDIT POST UTILS ---
     
-    // 🔥 UPDATED: Added text parameter for efficiency
-    window.openEditModal = (id, text) => {
+    // 🔥 FIXED: Better text handling for edit modal using Base64
+    window.openEditModal = (id) => {
         editingPostId = id;
-        document.getElementById('editModalInput').value = text.replace(/&quot;/g, '"'); // Decode quotes
+        const container = document.getElementById(`content-container-${id}`);
+        const encodedText = container.getAttribute('data-post-text');
+        
+        let decodedText = '';
+        try {
+            // Try to decode from Base64
+            decodedText = decodeURIComponent(atob(encodedText));
+        } catch(e) {
+            // If decoding fails, use fallback (for old posts)
+            decodedText = encodedText || '';
+            // Clean up HTML entities
+            decodedText = decodedText.replace(/&quot;/g, '"');
+            decodedText = decodedText.replace(/&amp;/g, '&');
+            decodedText = decodedText.replace(/&lt;/g, '<');
+            decodedText = decodedText.replace(/&gt;/g, '>');
+            decodedText = decodedText.replace(/&#39;/g, "'");
+            decodedText = decodedText.replace(/&nbsp;/g, ' ');
+        }
+        
+        document.getElementById('editModalInput').value = decodedText;
         document.getElementById('editModal').style.display = 'flex';
     };
     
@@ -1451,24 +1385,85 @@
         editingPostId = null; 
     };
     
-    // 🔥 UPDATED: Added Auth Check and improved error handling
+    // 🔥 FIXED: Save edit with better error handling
     window.saveEditPost = () => {
-        if (!currentUser) return showToast("Please login to perform this action.");
+        const newText = document.getElementById('editModalInput').value.trim();
         
-        const newText = document.getElementById('editModalInput').value;
-        if(editingPostId && newText) {
-            db.collection('posts').doc(editingPostId).update({ text: newText })
-            .then(() => { 
-                closeEditModal(); 
-                showToast("Post updated!"); 
-            })
-            .catch(e => {
-                console.error("Edit Failed:", e);
-                showToast("Post Edit Failed. Check if you are the owner or admin.");
-            });
+        if (!editingPostId || !newText) {
+            showToast("Post text cannot be empty!");
+            return;
         }
+        
+        // Check if user is banned
+        if (myData.isBanned) {
+            showToast("Your account is suspended. Cannot edit posts.");
+            closeEditModal();
+            return;
+        }
+        
+        // Show loading state
+        const saveBtn = document.querySelector('#editModal .btn-primary');
+        const originalText = saveBtn.innerHTML;
+        saveBtn.innerHTML = '<i class="ph ph-circle-notch ph-spin"></i> Saving...';
+        saveBtn.disabled = true;
+        
+        db.collection('posts').doc(editingPostId).update({ 
+            text: newText,
+            lastEdited: firebase.firestore.FieldValue.serverTimestamp() 
+        })
+        .then(() => { 
+            closeEditModal(); 
+            showToast("Post updated successfully!");
+            
+            // Update the feed immediately
+            setTimeout(() => {
+                const feedContainer = document.getElementById('feedContainer');
+                const postCard = feedContainer.querySelector(`#content-container-${editingPostId}`).closest('.post-card');
+                if (postCard) {
+                    const textElement = postCard.querySelector(`#text-body-${editingPostId}`);
+                    if (textElement) {
+                        textElement.innerHTML = makeLinksClickable(newText);
+                        // Re-run truncation logic
+                        truncatePostText(editingPostId, newText);
+                    }
+                }
+            }, 500);
+        })
+        .catch(e => {
+            console.error("Edit error:", e);
+            
+            if (e.code === 'permission-denied') {
+                showToast("You don't have permission to edit this post.");
+            } else if (e.message.includes('banned')) {
+                showToast("Cannot edit: Account restricted.");
+            } else {
+                showToast("Error updating post. Please try again.");
+            }
+            
+            // Reset button
+            saveBtn.innerHTML = originalText;
+            saveBtn.disabled = false;
+        });
     };
     
+    window.deleteComment = async (commentId) => {
+        if(!confirm("Delete this comment?")) return;
+        
+        try {
+            await db.collection('comments').doc(commentId).delete();
+            
+            // Decrement comment count
+            db.collection('posts').doc(activeTargetId).update({
+                commentCount: firebase.firestore.FieldValue.increment(-1)
+            });
+            
+            showToast("Comment deleted!");
+        } catch(e) {
+            console.error("Error deleting comment:", e);
+            showToast("Error deleting comment.");
+        }
+    };
+
     // 🔥 PROFILE EDIT MODAL LOGIC
     window.openProfileModal = () => {
         if(!currentUser) return showToast("Login first!");
@@ -1573,6 +1568,97 @@
         });
 
         document.getElementById('viewUserModal').style.display = 'flex';
+    };
+
+    // --- FEED ---
+    const loadFeed = () => {
+        if(feedUnsubscribe) feedUnsubscribe(); 
+        feedUnsubscribe = db.collection('posts')
+            .orderBy('timestamp', 'desc')
+            .limit(50) 
+            .onSnapshot(snap => {
+                const container = document.getElementById('feedContainer');
+                container.innerHTML = "";
+                let postHtml = [];
+                
+                snap.forEach(d => {
+                    const p = {id: d.id, ...d.data()};
+                    const isLiked = currentUser && p.likes && p.likes.includes(currentUser.uid);
+                    const likeIcon = isLiked ? 'ph-fill ph-heart' : 'ph ph-heart';
+                    const adminIcon = p.isAdmin ? `<i class="ph-fill ph-seal-check admin-badge"></i>` : '';
+                    
+                    const isOwner = currentUser && (currentUser.uid === p.uid || myData.isAdmin);
+                    
+                    const delBtn = isOwner ? `<i class="ph ph-trash" onclick="deletePost('${p.id}')" style="color:#ff4d4f;cursor:pointer;"></i>` : '';
+                    
+                    // Encode text using Base64 for safe passing
+                    const encodedText = btoa(encodeURIComponent(p.text || ''));
+                    const editBtn = isOwner ? `<i class="ph ph-pencil-simple" onclick="openEditModal('${p.id}')" style="color:#6C5DD3;cursor:pointer;margin-right:10px;"></i>` : '';
+                    
+                    let timeDisplay = "Just now";
+                    if(p.timestamp) {
+                        const date = p.timestamp.toDate();
+                        timeDisplay = date.toLocaleDateString() + " " + date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                    }
+                    
+                    const liveName = (userCache[p.uid]?.name) || p.authorName;
+                    const livePhoto = (userCache[p.uid]?.photo) || p.authorPhoto;
+                    const postAuthorId = p.uid || '';
+
+                    postHtml.push(`
+                        <div class="post-card">
+                            <div class="pc-header">
+                                <div class="pc-user" onclick="viewUserProfile('${postAuthorId}')">
+                                    <img src="${livePhoto}" class="avatar" style="width:40px; height:40px;">
+                                    <div>
+                                        <div class="pc-name">${liveName} ${adminIcon}</div>
+                                        <div class="pc-time">${timeDisplay}</div>
+                                    </div>
+                                </div>
+                                <div>${editBtn}${delBtn}</div>
+                            </div>
+                            
+                            <div id="content-container-${p.id}" data-post-text="${encodedText}"></div>
+                            <div id="see-more-btn-container-${p.id}"></div>
+                            ${p.image ? `<img src="${p.image}" class="pc-img">` : ''}
+                            
+                            <div class="pc-stats">
+                                <span>${p.likes ? p.likes.length : 0} Likes</span>
+                                <span onclick="openOverlay('comment', '${p.id}', '', '${postAuthorId}')">${p.commentCount || 0} Comments</span>
+                            </div>
+                            <div class="pc-actions">
+                                <div class="pc-btn ${isLiked?'liked':''}" onclick="toggleLike('${p.id}', ${isLiked}, '${postAuthorId}')">
+                                    <i class="${likeIcon}" style="font-size:20px;"></i> Like
+                                </div>
+                                <div class="pc-btn" onclick="openOverlay('comment', '${p.id}', '', '${postAuthorId}')">
+                                    <i class="ph ph-chat-circle" style="font-size:20px;"></i> Comment
+                                </div>
+                                <div class="pc-btn" onclick="sharePost('${encodeURIComponent(p.text || '')}')">
+                                    <i class="ph ph-share-network" style="font-size:20px;"></i> Share
+                                </div>
+                            </div>
+                        </div>
+                    `);
+                });
+                
+                container.innerHTML = postHtml.join('');
+
+                // Call truncation logic after all HTML is injected
+                snap.forEach(d => {
+                    const p = {id: d.id, ...d.data()};
+                    const containerEl = document.getElementById(`content-container-${p.id}`);
+                    if (containerEl) {
+                        const encodedText = containerEl.getAttribute('data-post-text');
+                        let decodedText = '';
+                        try {
+                            decodedText = decodeURIComponent(atob(encodedText));
+                        } catch(e) {
+                            decodedText = encodedText || '';
+                        }
+                        truncatePostText(p.id, decodedText);
+                    }
+                });
+            });
     };
 </script>
 </body>
