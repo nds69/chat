@@ -131,6 +131,30 @@
         .pc-btn.liked { color: var(--accent); }
         .pc-btn.liked i { animation: pop 0.3s ease; }
 
+        /* 🔥 Post Text Truncation */
+        .pc-text.truncated {
+            max-height: 4.5em; /* Approximately 3 lines of text (1.5 * 3) */
+            overflow: hidden;
+            position: relative;
+        }
+        .pc-text.truncated::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 1.5em; /* Fade height */
+            background: linear-gradient(to top, var(--bg-card), transparent);
+        }
+        .see-more-btn {
+            color: var(--primary);
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-block;
+            margin-top: 5px;
+            font-size: 14px;
+        }
+
         /* --- Floating Navigation --- */
         .nav-dock { 
             position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
@@ -629,6 +653,7 @@
     let userCache = {};
     let activePostOwnerId = null; 
     let notiUnsubscribe = null; 
+    let editingPostId = null; // Defined for Edit Post Modal
 
     // --- THEME MANAGEMENT ---
     const checkTheme = () => {
@@ -991,6 +1016,65 @@
             .catch((error) => { console.error("Error removing document: ", error); alert("Error deleting user."); });
         }
     };
+    
+    // --- POST TRUNCATION LOGIC (NEW) ---
+    const MAX_POST_LENGTH = 150; // Max characters before truncation
+    const MAX_POST_LINES = 3;    // Max lines before truncation
+
+    /**
+     * Truncates post text and adds 'See More' button.
+     * @param {string} postId The ID of the post.
+     * @param {string} text The raw text content.
+     */
+    const truncatePostText = (postId, text) => {
+        const textEl = document.getElementById(`content-container-${postId}`);
+        const btnEl = document.getElementById(`see-more-btn-container-${postId}`);
+        const clickableText = makeLinksClickable(text || '');
+
+        // Inject HTML structure first
+        textEl.innerHTML = `<div class="pc-text" id="text-body-${postId}">${clickableText}</div>`;
+        
+        const textBodyEl = document.getElementById(`text-body-${postId}`);
+        
+        // Use a hidden element to measure the number of lines
+        const lineMeasure = document.createElement('div');
+        lineMeasure.style.cssText = 'visibility: hidden; position: absolute; height: auto; width: 90%; font-size: 15px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word;';
+        lineMeasure.innerHTML = clickableText;
+        document.body.appendChild(lineMeasure);
+        
+        // Calculate line height and total height
+        const lineHeight = 1.5 * 15; // Assuming font-size 15px, line-height 1.5
+        const totalHeight = lineMeasure.offsetHeight;
+        const lineCount = Math.round(totalHeight / lineHeight);
+
+        document.body.removeChild(lineMeasure);
+
+        if (lineCount > MAX_POST_LINES || text.length > MAX_POST_LENGTH) {
+            textBodyEl.classList.add('truncated');
+            btnEl.innerHTML = `<span class="see-more-btn" onclick="togglePostContent('${postId}')">...See more</span>`;
+        } else {
+            textBodyEl.classList.remove('truncated');
+            btnEl.innerHTML = '';
+        }
+    };
+
+    /**
+     * Toggles 'See More' / 'See Less' state.
+     * @param {string} postId The ID of the post.
+     */
+    window.togglePostContent = (postId) => {
+        const textBodyEl = document.getElementById(`text-body-${postId}`);
+        const btnEl = document.getElementById(`see-more-btn-container-${postId}`);
+        
+        if (textBodyEl.classList.contains('truncated')) {
+            textBodyEl.classList.remove('truncated');
+            btnEl.innerHTML = `<span class="see-more-btn" onclick="togglePostContent('${postId}')">See less</span>`;
+        } else {
+            textBodyEl.classList.add('truncated');
+            btnEl.innerHTML = `<span class="see-more-btn" onclick="togglePostContent('${postId}')">...See more</span>`;
+        }
+    };
+    // --- END POST TRUNCATION LOGIC ---
 
     // --- FEED ---
     const loadFeed = () => {
@@ -1001,6 +1085,8 @@
             .onSnapshot(snap => {
                 const container = document.getElementById('feedContainer');
                 container.innerHTML = "";
+                let postHtml = [];
+                
                 snap.forEach(d => {
                     const p = {id: d.id, ...d.data()};
                     const isLiked = currentUser && p.likes && p.likes.includes(currentUser.uid);
@@ -1008,24 +1094,25 @@
                     const adminIcon = p.isAdmin ? `<i class="ph-fill ph-seal-check admin-badge"></i>` : '';
                     
                     const isOwner = currentUser && (currentUser.uid === p.uid || myData.isAdmin);
+                    
                     const delBtn = isOwner ? `<i class="ph ph-trash" onclick="deletePost('${p.id}')" style="color:#ff4d4f;cursor:pointer;"></i>` : '';
-                    const editBtn = isOwner ? `<i class="ph ph-pencil-simple" onclick="openEditModal('${p.id}')" style="color:#6C5DD3;cursor:pointer;margin-right:10px;"></i>` : '';
+                    
+                    // Passing post text to openEditModal directly
+                    // Escaping quotes for HTML attribute safety
+                    const plainText = (p.text || '').replace(/"/g, '&quot;');
+                    const editBtn = isOwner ? `<i class="ph ph-pencil-simple" onclick="openEditModal('${p.id}', '${plainText}')" style="color:#6C5DD3;cursor:pointer;margin-right:10px;"></i>` : '';
                     
                     let timeDisplay = "Just now";
                     if(p.timestamp) {
                         const date = p.timestamp.toDate();
                         timeDisplay = date.toLocaleDateString() + " " + date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
                     }
-                    const displayText = makeLinksClickable(p.text || '');
-                    const plainText = (p.text || '').replace(/"/g, '&quot;');
                     
                     const liveName = (userCache[p.uid]?.name) || p.authorName;
                     const livePhoto = (userCache[p.uid]?.photo) || p.authorPhoto;
-
-                    // 🔥 IMPORTANT: Check for p.uid existence to prevent errors
                     const postAuthorId = p.uid || '';
 
-                    container.innerHTML += `
+                    postHtml.push(`
                         <div class="post-card">
                             <div class="pc-header">
                                 <div class="pc-user" onclick="viewUserProfile('${postAuthorId}')">
@@ -1037,7 +1124,9 @@
                                 </div>
                                 <div>${editBtn}${delBtn}</div>
                             </div>
-                            <div class="pc-text" id="text-${p.id}">${displayText}</div>
+                            
+                            <div id="content-container-${p.id}" data-post-text="${plainText}"></div>
+                            <div id="see-more-btn-container-${p.id}"></div>
                             ${p.image ? `<img src="${p.image}" class="pc-img">` : ''}
                             
                             <div class="pc-stats">
@@ -1056,23 +1145,53 @@
                                 </div>
                             </div>
                         </div>
-                    `;
+                    `);
+                });
+                
+                container.innerHTML = postHtml.join('');
+
+                // 🔥 NEW: Call truncation logic after all HTML is injected
+                snap.forEach(d => {
+                    const p = {id: d.id, ...d.data()};
+                    const containerEl = document.getElementById(`content-container-${p.id}`);
+                    if (containerEl) {
+                        // Decode quotes back to normal text
+                        const text = containerEl.getAttribute('data-post-text').replace(/&quot;/g, '"');
+                        truncatePostText(p.id, text);
+                    }
                 });
             });
     };
-
-    const deletePost = (id) => confirm("Delete this post?") && db.collection('posts').doc(id).delete();
     
-    // 🔥 UPDATED: Delete Comment & Decrement Count Logic
-    window.deleteComment = (id) => {
-        if(confirm("Are you sure you want to delete this comment?")) {
-            db.collection('comments').doc(id).delete().then(() => {
-                db.collection('posts').doc(activeTargetId).update({
-                    commentCount: firebase.firestore.FieldValue.increment(-1)
-                }).catch(err => console.log("Count update error:", err)); // Safe fail
-                
-                showToast("Comment deleted");
-            }).catch(e => showToast("Error deleting comment"));
+    /**
+     * Deletes post and cleans up related data (Comments & Notifications).
+     * @param {string} id Post ID
+     */
+    window.deletePost = async (id) => {
+        if(!confirm("Delete this post? This will also permanently remove all associated comments and notifications (likes/comments).")) return;
+        
+        try {
+            const batch = db.batch();
+            const postRef = db.collection('posts').doc(id);
+            
+            // 1. Delete all related Comments
+            const commentsSnap = await db.collection('comments').where('postId', '==', id).get();
+            commentsSnap.forEach(doc => batch.delete(doc.ref));
+
+            // 2. Delete all related Notifications (Likes and Comments)
+            const notiSnap = await db.collection('notifications').where('postId', '==', id).get();
+            notiSnap.forEach(doc => batch.delete(doc.ref));
+
+            // 3. Delete the main post
+            batch.delete(postRef); 
+
+            // Execute the batch operation
+            await batch.commit();
+            showToast("Post and related data deleted!");
+            
+        } catch(e) {
+            console.error("Error during post cleanup:", e);
+            showToast("Error deleting post and related data. You might be banned or database issue.");
         }
     };
     
@@ -1313,11 +1432,11 @@
     };
 
     // --- EDIT POST UTILS ---
-    window.openEditModal = (id) => {
+    
+    // 🔥 UPDATED: Added text parameter for efficiency
+    window.openEditModal = (id, text) => {
         editingPostId = id;
-        const currentTextEl = document.getElementById(`text-${id}`);
-        const currentText = currentTextEl ? currentTextEl.innerText : "";
-        document.getElementById('editModalInput').value = currentText;
+        document.getElementById('editModalInput').value = text.replace(/&quot;/g, '"'); // Decode quotes
         document.getElementById('editModal').style.display = 'flex';
     };
     
