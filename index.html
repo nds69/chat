@@ -720,6 +720,7 @@
     document.onkeydown = function(e) {
         if(e.keyCode == 123) return false; 
         if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false; 
+        if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false; 
         if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; 
     }
 
@@ -1140,6 +1141,7 @@
         document.getElementById('chatFile').value = ''; 
         document.getElementById('chatPreviewImg').src = "";
         document.getElementById('chatPreviewWrapper').style.display = 'none';
+        document.getElementById('overlayInput').value = ""; // ချက်ချင်းရှင်းလင်း
         document.getElementById('overlayInput').placeholder = "Type a message...";
     };
 
@@ -1335,7 +1337,7 @@ window.deletePost = async (id) => {
         const seconds = Math.floor((new Date() - date) / 1000);
         
         if (seconds < 20) return "Active now"; // Active now (for fast status updates)
-        if (seconds < 60) return seconds + "s ago";
+        if (seconds < 60) return seconds + "m ago"; // Small fix for seconds
         if (seconds < 3600) return Math.floor(seconds / 60) + "m ago";
         if (seconds < 86400) return Math.floor(seconds / 3600) + "h ago";
         return date.toLocaleDateString();
@@ -1370,7 +1372,7 @@ window.deletePost = async (id) => {
                     // 🔥 Online Status Logic
                     const lastSeenDate = u.lastSeen ? u.lastSeen.toDate() : null;
                     const statusText = timeSince(lastSeenDate);
-                    const isOnline = statusText === "Active now" || statusText.endsWith("s ago");
+                    const isOnline = statusText === "Active now" || statusText.endsWith("s ago") || statusText.endsWith("m ago") && parseInt(statusText) < 5; // 5 minutes ago is considered somewhat active
                     
                     const statusDot = isOnline ? `<div class="online-dot"></div>` : '';
                     
@@ -1399,7 +1401,7 @@ window.deletePost = async (id) => {
                             ${statusDot} <div style="flex:1; margin-left:10px;">
                                 <div style="font-weight:600;">${u.name} ${isBanned ? '<span style="color:red; font-size:10px;">(BANNED)</span>' : ''}</div>
                                 <div style="font-size:12px; color:${isOnline ? '#4CAF50' : 'var(--text-gray)'};">
-                                    ${statusText} 
+                                    ${isOnline ? 'Active now' : statusText} 
                                 </div>
                             </div>
                             <div id="noti-${u.uid}" class="friend-noti-dot" 
@@ -1500,7 +1502,6 @@ window.deletePost = async (id) => {
                             </div>
                         </div>`;
                     } else {
-                        // 🔥 Chat Rendering Logic (Message & Media)
                         const isMe = item.sender === currentUser.uid;
                         const isRead = item.isRead === true;
                         const readIcon = isRead ? '<i class="ph-bold ph-checks read-blue"></i>' : '<i class="ph-bold ph-check"></i>';
@@ -1547,10 +1548,15 @@ window.deletePost = async (id) => {
     };
 
     window.handleOverlaySend = async () => {
-        const txt = document.getElementById('overlayInput').value.trim();
+        const inputEl = document.getElementById('overlayInput');
+        const txt = inputEl.value.trim();
         const img = document.getElementById('chatPreviewWrapper').style.display === 'flex' ? document.getElementById('chatPreviewImg').src : null;
 
         if(!txt && !img) return;
+
+        // 🔥 ချက်ချင်းရှင်းလင်းခြင်း (Optimistic Input Clear)
+        inputEl.value = "";
+        clearChatPreview();
         
         try {
             if(overlayMode === 'comment') {
@@ -1583,11 +1589,17 @@ window.deletePost = async (id) => {
                     isRead: false,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
-                clearChatPreview(); // Clear preview after sending chat message
             }
-            document.getElementById('overlayInput').value = "";
+            // 🔥 Firebase listener က ချက်ချင်း message အသစ်ကို ယူလာပြီး refresh လုပ်ပါလိမ့်မယ်။ 
+            // scroll ကိုတော့ ချက်ချင်းဆွဲတင်လိုက်ပါမယ်။
+            const body = document.getElementById('overlayBody');
+            body.scrollTop = body.scrollHeight;
+
         } catch(e) {
+            console.error("Failed to send message:", e);
             alert("Failed to send. You might be banned.");
+            // Error ဖြစ်ရင် input ထဲက စာသားကို ပြန်ထည့်ပေးပါ (Optional for better error handling)
+            inputEl.value = txt; 
         }
     };
     
@@ -1642,7 +1654,7 @@ window.deletePost = async (id) => {
     window.saveEditPost = () => {
         const newText = document.getElementById('editModalInput').value.trim();
         
-        if (!editingPostId || !newText) {
+        if (!newText) {
             showToast("Post text cannot be empty!");
             return;
         }
