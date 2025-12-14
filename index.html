@@ -1069,7 +1069,7 @@
         }
     };
     
-    // 🔥 FIXED: DELETE POST FUNCTION - IMPROVED ERROR HANDLING
+    // 🔥 FIXED: DELETE POST FUNCTION WITH IMPROVED ERROR HANDLING
     window.deletePost = async (id) => {
         if(!confirm("Delete this post? This will also permanently remove all associated comments and notifications (likes/comments).")) return;
         
@@ -1080,37 +1080,55 @@
         }
         
         try {
-            // 1. First, get all related data
+            // Show loading
+            showToast("Deleting post and related data...");
+            
+            // 1. Get all related comments
             const commentsSnap = await db.collection('comments').where('postId', '==', id).get();
+            
+            // 2. Get all related notifications
             const notiSnap = await db.collection('notifications').where('postId', '==', id).get();
             
-            // 2. Delete comments one by one
-            const commentDeletes = [];
+            // 3. Create array of delete promises
+            const deletePromises = [];
+            
+            // Add comments deletions
             commentsSnap.forEach(doc => {
-                commentDeletes.push(doc.ref.delete());
+                deletePromises.push(doc.ref.delete());
             });
             
-            // 3. Delete notifications one by one
-            const notiDeletes = [];
+            // Add notifications deletions
             notiSnap.forEach(doc => {
-                notiDeletes.push(doc.ref.delete());
+                deletePromises.push(doc.ref.delete());
             });
             
-            // 4. Delete the post
-            const postDelete = db.collection('posts').doc(id).delete();
+            // Add post deletion
+            deletePromises.push(db.collection('posts').doc(id).delete());
             
-            // 5. Wait for all deletions to complete
-            await Promise.all([...commentDeletes, ...notiDeletes, postDelete]);
+            // Execute all deletions
+            await Promise.all(deletePromises);
             
-            showToast("Post and related data deleted successfully!");
+            showToast("✅ Post and related data deleted successfully!");
+            
+            // Force refresh feed after deletion
+            setTimeout(() => {
+                if (feedUnsubscribe) feedUnsubscribe();
+                loadFeed();
+            }, 500);
             
         } catch(e) {
             console.error("Error during post cleanup:", e);
             
             // Specific error messages
             if (e.code === 'permission-denied') {
-                showToast("Permission denied. You may not have rights to delete.");
-            } else if (e.message.includes('banned')) {
+                showToast("❌ Permission denied. You may not have rights to delete this post.");
+                
+                // Additional debug info
+                console.log("Post ID:", id);
+                console.log("Current User UID:", currentUser?.uid);
+                console.log("My Data:", myData);
+                
+            } else if (e.message.includes('banned') || e.code === 'resource-exhausted') {
                 showToast("Cannot delete: Account restricted.");
             } else {
                 showToast("Error deleting post. Please try again.");
@@ -1662,4 +1680,4 @@
     };
 </script>
 </body>
-</html>
+    </html>
