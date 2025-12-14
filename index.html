@@ -125,7 +125,9 @@
             color: white !important; /* <--- 'X' စာလုံး (သို့) အိုင်ကွန်အရောင်ကို အဖြူရောင်ဖြစ်စေရန် သေချာစေပါသည်။ */
             width: 30px; height: 30px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            font-size: 16px; cursor: pointer; z-index: 10;
+            font-size: 20px; /* <--- X ကို ပိုမြင်သာစေရန် အရွယ်အစား အနည်းငယ်တိုးလိုက်သည် */
+            font-weight: bold; /* X ကို ပိုထူစေရန် */
+            cursor: pointer; z-index: 10;
         }
         
         /* --- Feed Post --- */
@@ -487,7 +489,7 @@
                     <div id="previewWrapper" class="preview-wrapper">
                         <img id="previewImg" style="width:100%; height:auto; max-height:400px; object-fit:contain; border-radius:12px; background-color:var(--input-bg);">
                         <div class="preview-delete-btn" onclick="clearPreviewImage()">
-                            <i class="ph ph-x-bold"></i>
+                            &times;
                         </div>
                     </div>
                     <div class="action-row">
@@ -632,7 +634,6 @@
     document.onkeydown = function(e) {
         if(e.keyCode == 123) return false; 
         if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false; 
-        if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false; 
         if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; 
     }
 
@@ -760,7 +761,8 @@
                     myData = newData;
                     localStorage.setItem('my_profile_data', JSON.stringify(myData)); 
                     updateUI(); 
-
+                    userCache[user.uid] = myData; // 🔥 မိမိကိုယ်ပိုင် data ကို Cache ထဲ ထည့်သွင်း
+                    
                     document.getElementById('loggedInCreateBox').style.display = 'block';
                     document.getElementById('guestFeedBanner').style.display = 'none';
                     document.getElementById('profile-guest-view').style.display = 'none'; 
@@ -781,6 +783,7 @@
                     doc.ref.set(myData);
                     localStorage.setItem('my_profile_data', JSON.stringify(myData));
                     updateUI();
+                    userCache[user.uid] = myData; // 🔥 မိမိကိုယ်ပိုင် data ကို Cache ထဲ ထည့်သွင်း
                 }
             });
         } else {
@@ -1200,13 +1203,19 @@ window.deletePost = async (id) => {
         if(!currentUser) return;
         document.getElementById('friendList').innerHTML = "<div style='text-align:center; padding:20px; color:var(--text-gray);'>Loading...</div>";
         
+        // 🔥 Real-time friend list + Caching
         db.collection('users').onSnapshot(snap => {
             const list = document.getElementById('friendList');
             list.innerHTML = "";
             let foundOthers = false;
             let count = 0;
             
-            snap.forEach(d => { userCache[d.id] = d.data(); });
+            // Cache all users found in the friends list
+            snap.forEach(d => { 
+                if (d.exists) {
+                    userCache[d.id] = d.data(); 
+                }
+            });
 
             snap.forEach(d => {
                 const u = d.data();
@@ -1640,13 +1649,13 @@ window.deletePost = async (id) => {
         feedUnsubscribe = db.collection('posts')
             .orderBy('timestamp', 'desc')
             .limit(50) 
-            .onSnapshot(snap => {
+            .onSnapshot(async snap => { // 🔥 async ထည့်လိုက်ပါသည်
                 const container = document.getElementById('feedContainer');
                 container.innerHTML = "";
                 let postHtml = [];
                 
-                snap.forEach(d => {
-                    const p = {id: d.id, ...d.data()};
+                for (const doc of snap.docs) {
+                    const p = {id: doc.id, ...doc.data()};
                     const isLiked = currentUser && p.likes && p.likes.includes(currentUser.uid);
                     const likeIcon = isLiked ? 'ph-fill ph-heart' : 'ph ph-heart';
                     const adminIcon = p.isAdmin ? `<i class="ph-fill ph-seal-check admin-badge"></i>` : '';
@@ -1665,9 +1674,25 @@ window.deletePost = async (id) => {
                         timeDisplay = date.toLocaleDateString() + " " + date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
                     }
                     
-                    const liveName = (userCache[p.uid]?.name) || p.authorName;
-                    const livePhoto = (userCache[p.uid]?.photo) || p.authorPhoto;
                     const postAuthorId = p.uid || '';
+
+                    // 🔥 Post Author ၏ Data ကို Cache သို့မဟုတ် Firestore မှ ရယူခြင်း
+                    let authorData = userCache[postAuthorId];
+                    if (!authorData && postAuthorId) {
+                        try {
+                            const userDoc = await db.collection('users').doc(postAuthorId).get();
+                            if (userDoc.exists) {
+                                authorData = userDoc.data();
+                                userCache[postAuthorId] = authorData;
+                            }
+                        } catch(e) {
+                             console.error("Error fetching author data:", e);
+                        }
+                    }
+                    
+                    const liveName = authorData?.name || p.authorName || 'User';
+                    const livePhoto = authorData?.photo || p.authorPhoto || 'https://via.placeholder.com/40';
+
 
                     postHtml.push(`
                         <div class="post-card">
@@ -1703,7 +1728,7 @@ window.deletePost = async (id) => {
                             </div>
                         </div>
                     `);
-                });
+                }
                 
                 container.innerHTML = postHtml.join('');
 
