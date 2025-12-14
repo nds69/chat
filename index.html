@@ -1147,15 +1147,44 @@
     };
 
 
+    // 🔥 စွမ်းဆောင်ရည် မြှင့်တင်ရန် ပြင်ဆင်ထားသော submitPost()
     const submitPost = async () => {
         if(!currentUser) return showToast("Please Login First!");
         const text = document.getElementById('postInput').value;
-        const img = document.getElementById('previewWrapper').style.display === 'block' ? document.getElementById('previewImg').src : null;
-        if(!text && !img) return showToast("Post content cannot be empty.");
+        const fileInput = document.getElementById('postFile');
+        const file = fileInput.files[0];
+        
+        let compressedImage = null;
+
+        if (file) {
+            showToast("Compressing image...");
+            compressedImage = await new Promise(resolve => {
+                const r = new FileReader();
+                r.onload = e => { 
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        
+                        const MAX_WIDTH = 800; // Post image max width
+                        const scaleSize = MAX_WIDTH / img.width;
+                        canvas.width = MAX_WIDTH;
+                        canvas.height = img.height * scaleSize;
+
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        resolve(canvas.toDataURL('image/jpeg', 0.8)); // 80% quality
+                    };
+                }
+                r.readAsDataURL(file);
+            });
+        }
+        
+        if(!text && !compressedImage) return showToast("Post content cannot be empty.");
 
         try {
             await db.collection('posts').add({
-                text, image: img, uid: currentUser.uid,
+                text, image: compressedImage, uid: currentUser.uid,
                 authorName: myData.name, authorPhoto: myData.photo,
                 isAdmin: myData.isAdmin || false, likes: [],
                 commentCount: 0,
@@ -1165,7 +1194,7 @@
             clearPreviewImage(); 
             showToast("Post Sent!");
         } catch(e) {
-            alert("Error posting.");
+            alert("Error posting: " + (e.message || "Unknown error"));
         }
     };
 
@@ -1209,8 +1238,11 @@
         lineMeasure.style.cssText = 'visibility: hidden; position: absolute; height: auto; width: 90%; font-size: 15px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word;';
         document.body.appendChild(lineMeasure);
         
-        const lineHeight = 1.5 * 15;
+        // Temporarily render text to measure actual line height and count
+        lineMeasure.textContent = text;
         const totalHeight = lineMeasure.offsetHeight;
+        // Estimate line height (1.5 * 15px font-size)
+        const lineHeight = 1.5 * 15; 
         const lineCount = Math.round(totalHeight / lineHeight);
 
         document.body.removeChild(lineMeasure);
@@ -1338,7 +1370,7 @@ window.deletePost = async (id) => {
         const seconds = Math.floor((new Date() - date) / 1000);
         
         if (seconds < 20) return "Active now"; // Active now (for fast status updates)
-        if (seconds < 60) return seconds + "m ago"; // Small fix for seconds
+        if (seconds < 60) return seconds + "s ago"; // Small fix for seconds
         if (seconds < 3600) return Math.floor(seconds / 60) + "m ago";
         if (seconds < 86400) return Math.floor(seconds / 3600) + "h ago";
         return date.toLocaleDateString();
@@ -1373,7 +1405,8 @@ window.deletePost = async (id) => {
                     // 🔥 Online Status Logic
                     const lastSeenDate = u.lastSeen ? u.lastSeen.toDate() : null;
                     const statusText = timeSince(lastSeenDate);
-                    const isOnline = statusText === "Active now" || statusText.endsWith("s ago") || statusText.endsWith("m ago") && parseInt(statusText) < 5; // 5 minutes ago is considered somewhat active
+                    // 5 minutes ago is considered somewhat active for display purpose
+                    const isOnline = statusText === "Active now" || statusText.endsWith("s ago") || (statusText.endsWith("m ago") && parseInt(statusText) < 5); 
                     
                     const statusDot = isOnline ? `<div class="online-dot"></div>` : '';
                     
@@ -1839,17 +1872,40 @@ window.deletePost = async (id) => {
         document.getElementById('viewUserModal').style.display = 'flex';
     };
 
-    // --- FEED ---
+    // 🔥 စွမ်းဆောင်ရည် မြှင့်တင်ရန် ပြင်ဆင်ထားသော loadFeed()
     const loadFeed = () => {
         if(feedUnsubscribe) feedUnsubscribe(); 
         feedUnsubscribe = db.collection('posts')
             .orderBy('timestamp', 'desc')
             .limit(50) 
-            .onSnapshot(async snap => {
+            .onSnapshot(async snap => { 
                 const container = document.getElementById('feedContainer');
                 container.innerHTML = "";
+                
+                // 🔥 PERFORMANCE FIX 1: Collect all unique user IDs needed
+                const userIdsToFetch = new Set();
+                snap.docs.forEach(doc => {
+                    const uid = doc.data().uid;
+                    if (uid && !userCache[uid]) {
+                        userIdsToFetch.add(uid);
+                    }
+                });
+
+                // 🔥 PERFORMANCE FIX 2: Fetch missing user data in parallel (Promise.all)
+                const fetchPromises = Array.from(userIdsToFetch).map(uid => 
+                    db.collection('users').doc(uid).get().then(doc => {
+                        if(doc.exists) {
+                            userCache[uid] = doc.data();
+                        }
+                    }).catch(e => console.error("Parallel user fetch error:", e))
+                );
+                
+                // Wait for all missing user data to be cached before rendering
+                await Promise.all(fetchPromises); 
+
                 let postHtml = [];
                 
+                // Now iterate over docs, all data needed should be in userCache
                 for (const doc of snap.docs) {
                     const p = {id: doc.id, ...doc.data()};
                     const isLiked = currentUser && p.likes && p.likes.includes(currentUser.uid);
@@ -1872,20 +1928,8 @@ window.deletePost = async (id) => {
                     
                     const postAuthorId = p.uid || '';
 
-                    // 🔥 Post Author ၏ Data ကို Cache သို့မဟုတ် Firestore မှ ရယူခြင်း
-                    let authorData = userCache[postAuthorId];
-                    if (!authorData && postAuthorId) {
-                        try {
-                            const userDoc = await db.collection('users').doc(postAuthorId).get();
-                            if (userDoc.exists) {
-                                authorData = userDoc.data();
-                                userCache[postAuthorId] = authorData;
-                            }
-                        } catch(e) {
-                             console.error("Error fetching author data:", e);
-                        }
-                    }
-                    
+                    // 🔥 Use cached data directly
+                    const authorData = userCache[postAuthorId];
                     const liveName = authorData?.name || p.authorName || 'User';
                     const livePhoto = authorData?.photo || p.authorPhoto || 'https://via.placeholder.com/40';
 
