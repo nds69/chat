@@ -198,13 +198,13 @@
         .os-title { font-weight: 700; font-size: 18px; }
         .os-body { flex: 1; overflow-y: auto; padding: 20px; background: var(--bg-body); display: flex; flex-direction: column; gap: 10px; }
         
-        /* 🔥 CHAT INPUT AREA DESIGN */
+        /* 🔥 CHAT INPUT AREA DESIGN (Layout Fixed) */
         .os-input { 
             padding: 10px 15px; 
             background: var(--bg-card); 
             border-top: 1px solid var(--border-color); 
             display: flex; 
-            align-items: flex-end; /* input/button ကို အောက်ဆုံးကပ်စေရန် */
+            align-items: flex-start; /* Input area ကို အပေါ်ကပ်စေရန် */
             gap: 10px; 
             flex-direction: column;
         }
@@ -212,7 +212,7 @@
             display: flex;
             gap: 10px;
             width: 100%;
-            align-items: flex-end;
+            align-items: flex-end; /* Input နှင့် Button ညီညာစေရန် */
         }
         
         /* 🔥 CHAT BUBBLE DESIGN MODIFICATION */
@@ -272,8 +272,19 @@
         .read-blue { color: #87CEEB !important; }
 
         /* --- Friend List Item --- */
-        .friend-card { background: var(--bg-card); padding: 15px; border-radius: 15px; display: flex; align-items: center; gap: 15px; margin-bottom: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); cursor: pointer;}
+        .friend-card { background: var(--bg-card); padding: 15px; border-radius: 15px; display: flex; align-items: center; gap: 15px; margin-bottom: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); cursor: pointer; position: relative;}
         
+        /* 🔥 NEW: Online Status Dot */
+        .online-dot {
+            width: 10px; height: 10px; background: #4CAF50; /* Green */
+            border-radius: 50%;
+            border: 2px solid var(--bg-card);
+            position: absolute;
+            bottom: 14px;
+            left: 50px;
+            z-index: 10;
+        }
+
         /* --- Profile Styles --- */
         .profile-header { background: var(--bg-card); border-radius: 20px; padding: 30px 20px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.03); position: relative; margin-bottom: 20px;}
         .dark-mode-toggle { position: absolute; top: 15px; right: 15px; background: var(--input-bg); padding: 8px; border-radius: 50%; cursor: pointer; color: var(--text-main); }
@@ -680,7 +691,8 @@
         <div id="overlayBody" class="os-body"></div>
         
         <div class="os-input">
-            <div id="chatPreviewWrapper" class="preview-wrapper" style="margin: 0 0 10px; display:none; max-width: 250px; background: var(--input-bg); border-radius: 15px; padding: 10px; align-self: flex-start;">
+            
+            <div id="chatPreviewWrapper" class="preview-wrapper" style="margin: 0 0 5px; display:none; max-width: 250px; background: var(--input-bg); border-radius: 15px; padding: 10px; align-self: flex-start;">
                 <img id="chatPreviewImg" style="width:100%; height:auto; max-height:200px; object-fit:contain; border-radius:10px;">
                 <div class="preview-delete-btn" onclick="clearChatPreview()">
                     &times;
@@ -708,7 +720,6 @@
     document.onkeydown = function(e) {
         if(e.keyCode == 123) return false; 
         if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false; 
-        if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false; 
         if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; 
     }
 
@@ -727,6 +738,27 @@
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
+    
+    // 🔥 NEW: Function to update user's last seen status
+    const updateUserStatus = () => {
+        if (currentUser) {
+            db.collection('users').doc(currentUser.uid).update({
+                lastSeen: firebase.firestore.FieldValue.serverTimestamp()
+            }).catch(e => console.log("Status update failed:", e));
+        }
+    };
+    
+    // 🔥 NEW: Update status every 60 seconds (active status check)
+    if (window.statusInterval) clearInterval(window.statusInterval);
+    window.statusInterval = setInterval(updateUserStatus, 60000); 
+
+    // 🔥 NEW: Update status immediately on user activity (better UX)
+    ['mousemove', 'keydown', 'touchstart'].forEach(eventType => {
+        document.addEventListener(eventType, () => {
+            if (window.statusTimeout) clearTimeout(window.statusTimeout);
+            window.statusTimeout = setTimeout(updateUserStatus, 5000); // Wait 5 seconds after activity
+        });
+    });
 
     // 🔥 ENABLE OFFLINE PERSISTENCE (Faster Loading)
     db.enablePersistence()
@@ -836,7 +868,7 @@
                     myData = newData;
                     localStorage.setItem('my_profile_data', JSON.stringify(myData)); 
                     updateUI(); 
-                    userCache[user.uid] = myData; // 🔥 မိမိကိုယ်ပိုင် data ကို Cache ထဲ ထည့်သွင်း
+                    userCache[user.uid] = myData; 
                     
                     document.getElementById('loggedInCreateBox').style.display = 'block';
                     document.getElementById('guestFeedBanner').style.display = 'none';
@@ -846,6 +878,7 @@
                     loadFriends();
                     startNotificationListener();
                     startHeaderNotiListener(); 
+                    updateUserStatus(); // Initial status update
                 } else {
                     myData = { 
                         name: user.displayName, photo: user.photoURL, 
@@ -858,7 +891,8 @@
                     doc.ref.set(myData);
                     localStorage.setItem('my_profile_data', JSON.stringify(myData));
                     updateUI();
-                    userCache[user.uid] = myData; // 🔥 မိမိကိုယ်ပိုင် data ကို Cache ထဲ ထည့်သွင်း
+                    userCache[user.uid] = myData; 
+                    updateUserStatus(); // Initial status update
                 }
             });
         } else {
@@ -1204,7 +1238,7 @@
         }
     };
     
-// 🔥 FIXED: SIMPLIFIED DELETE FUNCTION
+// FIXED: SIMPLIFIED DELETE FUNCTION
 window.deletePost = async (id) => {
     if(!confirm("Delete this post?")) return;
     
@@ -1296,6 +1330,18 @@ window.deletePost = async (id) => {
     };
 
     // --- FRIENDS LIST ---
+    const timeSince = (date) => {
+        if (!date || !(date instanceof Date)) return "Offline";
+        const seconds = Math.floor((new Date() - date) / 1000);
+        
+        if (seconds < 20) return "Active now"; // Active now (for fast status updates)
+        if (seconds < 60) return seconds + "s ago";
+        if (seconds < 3600) return Math.floor(seconds / 60) + "m ago";
+        if (seconds < 86400) return Math.floor(seconds / 3600) + "h ago";
+        return date.toLocaleDateString();
+    };
+
+
     const loadFriends = () => {
         if(!currentUser) return;
         document.getElementById('friendList').innerHTML = "<div style='text-align:center; padding:20px; color:var(--text-gray);'>Loading...</div>";
@@ -1321,6 +1367,13 @@ window.deletePost = async (id) => {
                     count++;
                     const isBanned = u.isBanned === true;
                     
+                    // 🔥 Online Status Logic
+                    const lastSeenDate = u.lastSeen ? u.lastSeen.toDate() : null;
+                    const statusText = timeSince(lastSeenDate);
+                    const isOnline = statusText === "Active now" || statusText.endsWith("s ago");
+                    
+                    const statusDot = isOnline ? `<div class="online-dot"></div>` : '';
+                    
                     let adminActions = '';
                     if (myData.isAdmin) {
                         adminActions = `
@@ -1343,9 +1396,11 @@ window.deletePost = async (id) => {
                     list.innerHTML += `
                         <div class="friend-card" onclick="viewUserProfile('${u.uid}')">
                             <img src="${u.photo}" class="avatar" style="width:50px; height:50px;">
-                            <div style="flex:1; margin-left:10px;">
+                            ${statusDot} <div style="flex:1; margin-left:10px;">
                                 <div style="font-weight:600;">${u.name} ${isBanned ? '<span style="color:red; font-size:10px;">(BANNED)</span>' : ''}</div>
-                                <div style="font-size:12px; color:var(--text-gray);">Tap to view profile</div>
+                                <div style="font-size:12px; color:${isOnline ? '#4CAF50' : 'var(--text-gray)'};">
+                                    ${statusText} 
+                                </div>
                             </div>
                             <div id="noti-${u.uid}" class="friend-noti-dot" 
                                  style="width:10px; height:10px; background:#FF4D4F; border-radius:50%; display:${showDot}; margin-right:10px;">
