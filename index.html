@@ -407,7 +407,6 @@
         .logout-btn-simple {
             background: transparent; color: #ff4d4f; border: 1px solid rgba(255, 77, 79, 0.2);
             padding: 8px 15px; border-radius: 12px; font-weight: 600; font-size: 13px;
-            display: flex; align-items: center; justify-content: center; gap: 6px;
             cursor: pointer; transition: 0.2s; margin: 0 auto 15px;
         }
         .logout-btn-simple:active { background: rgba(255, 77, 79, 0.1); transform: scale(0.98); }
@@ -622,7 +621,7 @@
                             Tap the top-right avatar to edit profile
                         </div>
                         
-                        <button class="logout-btn-simple" onclick="auth.signOut()">
+                        <button class="logout-btn-simple" onclick="auth.signOut().then(() => window.location.reload())">
                             <i class="ph-bold ph-sign-out"></i> Log Out
                         </button>
                     </div>
@@ -668,6 +667,7 @@
         <div class="nav-dock">
             <div class="nav-item active" onclick="switchTab('home', this)">
                 <i class="ph-fill ph-house"></i>
+                <div id="chatBadge" class="nav-badge"></div>
                 <div class="nav-indicator"></div>
             </div>
             <div class="nav-item" onclick="switchTab('friends', this)">
@@ -720,7 +720,6 @@
     document.onkeydown = function(e) {
         if(e.keyCode == 123) return false; 
         if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false; 
-        if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false; 
         if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; 
     }
 
@@ -1094,6 +1093,8 @@
               const batch = db.batch();
               snap.forEach(doc => batch.update(doc.ref, { isRead: true }));
               batch.commit();
+              // 🔥 Badge Update ချက်ချင်းလုပ်ရန်
+              startNotificationListener(); 
           });
     };
 
@@ -1141,7 +1142,7 @@
         document.getElementById('chatFile').value = ''; 
         document.getElementById('chatPreviewImg').src = "";
         document.getElementById('chatPreviewWrapper').style.display = 'none';
-        document.getElementById('overlayInput').value = ""; // ချက်ချင်းရှင်းလင်း
+        document.getElementById('overlayInput').value = ""; // ချက်ချင်းရှင်းလင်းခြင်း
         document.getElementById('overlayInput').placeholder = "Type a message...";
     };
 
@@ -1545,6 +1546,8 @@ window.deletePost = async (id) => {
         overlayMode = '';
         chatReceiverId = null;
         clearChatPreview(); // Clean up chat preview on close
+        // 🔥 Chat မျက်နှာပြင်မှ ထွက်တာနဲ့ Badge ကို ချက်ချင်း စစ်ဆေးပြီး ဖျောက်ပေးခြင်း
+        if(currentUser) startNotificationListener(); 
     };
 
     window.handleOverlaySend = async () => {
@@ -1590,8 +1593,8 @@ window.deletePost = async (id) => {
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
             }
-            // 🔥 Firebase listener က ချက်ချင်း message အသစ်ကို ယူလာပြီး refresh လုပ်ပါလိမ့်မယ်။ 
-            // scroll ကိုတော့ ချက်ချင်းဆွဲတင်လိုက်ပါမယ်။
+            
+            // 🔥 Scroll ကို ချက်ချင်းဆွဲတင်လိုက်ပါမယ်။
             const body = document.getElementById('overlayBody');
             body.scrollTop = body.scrollHeight;
 
@@ -1599,6 +1602,7 @@ window.deletePost = async (id) => {
             console.error("Failed to send message:", e);
             alert("Failed to send. You might be banned.");
             // Error ဖြစ်ရင် input ထဲက စာသားကို ပြန်ထည့်ပေးပါ (Optional for better error handling)
+            // Note: clearChatPreview() already cleared the image, so only text needs restoration
             inputEl.value = txt; 
         }
     };
