@@ -113,7 +113,7 @@
         .action-row { display: flex; justify-content: space-between; align-items: center; }
         .photo-trigger { color: var(--primary); font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 5px 10px; border-radius: 8px; background: rgba(108, 93, 211, 0.1); }
         
-        /* 🔥 NEW: Image Preview Wrapper & Delete Button */
+        /* 🔥 Image Preview Wrapper & Delete Button */
         .preview-wrapper { 
             position: relative; 
             margin-bottom: 15px; 
@@ -122,11 +122,11 @@
         .preview-delete-btn {
             position: absolute; top: 10px; right: 10px;
             background: rgba(255, 77, 79, 0.9); /* အနီရောင် နောက်ခံ */
-            color: white !important; /* <--- 'X' စာလုံး (သို့) အိုင်ကွန်အရောင်ကို အဖြူရောင်ဖြစ်စေရန် သေချာစေပါသည်။ */
+            color: white !important; /* 'X' အရောင် အဖြူ */
             width: 30px; height: 30px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            font-size: 20px; /* <--- X ကို ပိုမြင်သာစေရန် အရွယ်အစား အနည်းငယ်တိုးလိုက်သည် */
-            font-weight: bold; /* X ကို ပိုထူစေရန် */
+            font-size: 20px; /* X ကို ပိုမြင်သာစေရန် */
+            font-weight: bold; 
             cursor: pointer; z-index: 10;
         }
         
@@ -197,17 +197,74 @@
         .os-header { height: 60px; display: flex; align-items: center; padding: 0 20px; border-bottom: 1px solid var(--border-color); gap: 15px; }
         .os-title { font-weight: 700; font-size: 18px; }
         .os-body { flex: 1; overflow-y: auto; padding: 20px; background: var(--bg-body); display: flex; flex-direction: column; gap: 10px; }
-        .os-input { padding: 15px; background: var(--bg-card); border-top: 1px solid var(--border-color); display: flex; gap: 10px; }
         
-        .bubble { padding: 10px 15px; border-radius: 15px; max-width: 80%; font-size: 15px; position: relative; word-wrap: break-word; white-space: pre-wrap; display: flex; flex-direction: column; }
+        /* 🔥 CHAT INPUT AREA DESIGN */
+        .os-input { 
+            padding: 10px 15px; 
+            background: var(--bg-card); 
+            border-top: 1px solid var(--border-color); 
+            display: flex; 
+            align-items: flex-end; /* input/button ကို အောက်ဆုံးကပ်စေရန် */
+            gap: 10px; 
+            flex-direction: column;
+        }
+        .os-input .input-row-flex {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            align-items: flex-end;
+        }
+        
+        /* 🔥 CHAT BUBBLE DESIGN MODIFICATION */
+        .bubble { 
+            padding: 10px 15px; 
+            border-radius: 18px; /* ပိုမိုလှပသော မျဉ်းကွေး */
+            max-width: 85%; 
+            font-size: 15px; 
+            position: relative; 
+            word-wrap: break-word; 
+            white-space: pre-wrap; 
+            display: flex; 
+            flex-direction: column; 
+            line-height: 1.4; 
+            word-break: break-word; /* စာလုံးရှည်တွေ မကျော်ထွက်အောင် */
+        } 
         .bubble-name { font-size: 11px; font-weight: 700; opacity: 0.6; margin-bottom: 2px; line-height: 1.2; }
         .bubble-content { line-height: 1.4; }
-        
-        .bubble-me { background: var(--primary); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+
+        .bubble-me { 
+            background: var(--primary); 
+            color: white; 
+            align-self: flex-end; 
+            border-bottom-right-radius: 6px; 
+        }
         .bubble-me .bubble-name { color: rgba(255,255,255,0.8); }
-        
-        .bubble-other { background: var(--bg-card); color: var(--text-main); align-self: flex-start; border-bottom-left-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+
+        .bubble-other { 
+            background: var(--bg-card); 
+            color: var(--text-main); 
+            align-self: flex-start; 
+            border-bottom-left-radius: 6px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+        }
         .bubble-other .bubble-name { color: var(--text-gray); }
+
+        /* 🔥 NEW: Image/Photo Message Design */
+        .msg-image-preview {
+            width: 100%; max-width: 250px; 
+            max-height: 250px; object-fit: cover; 
+            border-radius: 12px; margin-top: 5px; 
+            cursor: pointer; display: block;
+        }
+        /* Message bubble that only contains an image */
+        .bubble.media-only {
+            padding: 0;
+            background: none;
+            box-shadow: none;
+        }
+        .bubble.media-only .msg-image-preview {
+            margin-top: 0;
+        }
 
         /* Read Receipt Style */
         .msg-status { font-size: 10px; align-self: flex-end; margin-top: 2px; color: rgba(255,255,255,0.7); display:flex; gap:2px;}
@@ -619,12 +676,29 @@
             <i class="ph ph-arrow-left" style="font-size:24px; cursor:pointer;" onclick="closeOverlay()"></i>
             <div class="os-title" id="overlayTitle">Comments</div>
         </div>
+        
         <div id="overlayBody" class="os-body"></div>
+        
         <div class="os-input">
-            <input type="text" id="overlayInput" class="post-input" placeholder="Type here...">
-            <button class="btn btn-primary" style="padding:10px;" onclick="handleOverlaySend()">
-                <i class="ph-fill ph-paper-plane-right"></i>
-            </button>
+            <div id="chatPreviewWrapper" class="preview-wrapper" style="margin: 0 0 10px; display:none; max-width: 250px; background: var(--input-bg); border-radius: 15px; padding: 10px; align-self: flex-start;">
+                <img id="chatPreviewImg" style="width:100%; height:auto; max-height:200px; object-fit:contain; border-radius:10px;">
+                <div class="preview-delete-btn" onclick="clearChatPreview()">
+                    &times;
+                </div>
+            </div>
+            
+            <div class="input-row-flex">
+                <label for="chatFile" style="color:var(--primary); font-size:24px; cursor:pointer; display:flex; align-items:center;">
+                    <i class="ph ph-image"></i>
+                </label>
+                <input type="file" id="chatFile" accept="image/*" style="display:none" onchange="previewChatFile()">
+
+                <input type="text" id="overlayInput" class="post-input" placeholder="Type a message..." inputmode="text">
+                
+                <button class="btn btn-primary" style="padding:10px;" onclick="handleOverlaySend()">
+                    <i class="ph-fill ph-paper-plane-right"></i>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -634,6 +708,7 @@
     document.onkeydown = function(e) {
         if(e.keyCode == 123) return false; 
         if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false; 
+        if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false; 
         if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; 
     }
 
@@ -1003,19 +1078,41 @@
         }
     };
     
-    // 🔥 NEW: Function to clear the image preview
     window.clearPreviewImage = () => {
         document.getElementById('postFile').value = ''; // Clear file input
         document.getElementById('previewImg').src = "";
         document.getElementById('previewWrapper').style.display = 'none';
         showToast("Image cleared!");
     };
+    
+    // 🔥 CHAT MEDIA PREVIEW FUNCTIONS
+    window.previewChatFile = () => {
+        const file = document.getElementById('chatFile').files[0];
+        const previewImg = document.getElementById('chatPreviewImg');
+        const previewWrapper = document.getElementById('chatPreviewWrapper');
+        
+        if(file) {
+            const r = new FileReader();
+            r.onload = e => { 
+                previewImg.src = e.target.result; 
+                previewWrapper.style.display = 'flex'; 
+                document.getElementById('overlayInput').placeholder = "Add a caption...";
+            }
+            r.readAsDataURL(file);
+        }
+    };
+    
+    window.clearChatPreview = () => {
+        document.getElementById('chatFile').value = ''; 
+        document.getElementById('chatPreviewImg').src = "";
+        document.getElementById('chatPreviewWrapper').style.display = 'none';
+        document.getElementById('overlayInput').placeholder = "Type a message...";
+    };
 
 
     const submitPost = async () => {
         if(!currentUser) return showToast("Please Login First!");
         const text = document.getElementById('postInput').value;
-        // 🔥 Updated to check wrapper display status
         const img = document.getElementById('previewWrapper').style.display === 'block' ? document.getElementById('previewImg').src : null;
         if(!text && !img) return showToast("Post content cannot be empty.");
 
@@ -1028,7 +1125,7 @@
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
             document.getElementById('postInput').value = "";
-            clearPreviewImage(); // Use the new function to clear
+            clearPreviewImage(); 
             showToast("Post Sent!");
         } catch(e) {
             alert("Error posting.");
@@ -1274,6 +1371,12 @@ window.deletePost = async (id) => {
     window.openOverlay = (mode, targetId, name = '', ownerId = null) => {
         if(!currentUser) return showToast("Please Login First!");
         
+        // 🔥 Chat Preview များကို ရှင်းလင်းခြင်း
+        if (mode === 'chat') {
+            document.getElementById('overlayInput').placeholder = "Type a message...";
+            clearChatPreview();
+        }
+
         overlayMode = mode;
         const screen = document.getElementById('overlayScreen');
         const title = document.getElementById('overlayTitle');
@@ -1342,15 +1445,31 @@ window.deletePost = async (id) => {
                             </div>
                         </div>`;
                     } else {
+                        // 🔥 Chat Rendering Logic (Message & Media)
                         const isMe = item.sender === currentUser.uid;
                         const isRead = item.isRead === true;
                         const readIcon = isRead ? '<i class="ph-bold ph-checks read-blue"></i>' : '<i class="ph-bold ph-check"></i>';
                         const status = isMe ? `<div class="msg-status">${readIcon}</div>` : '';
+                        
+                        let mediaContent = item.image 
+                            ? `<img src="${item.image}" class="msg-image-preview" onclick="window.open('${item.image}', '_blank')">` 
+                            : '';
 
+                        const hasText = (item.text && item.text.trim().length > 0);
+                        const textContent = hasText
+                            ? `<span class="bubble-content">${txt}</span>`
+                            : '';
+
+                        // If it's only a picture, adjust bubble class
+                        const mediaOnlyClass = (item.image && !hasText) 
+                            ? 'media-only' 
+                            : '';
+                        
                         return `
                         <div style="display:flex; flex-direction:column; margin-bottom:5px; align-items:${isMe?'flex-end':'flex-start'}">
-                            <div class="bubble ${isMe ? 'bubble-me' : 'bubble-other'}">
-                                <span class="bubble-content">${txt}</span>
+                            <div class="bubble ${isMe ? 'bubble-me' : 'bubble-other'} ${mediaOnlyClass}">
+                                ${mediaContent}
+                                ${textContent}
                                 ${status}
                             </div>
                         </div>`;
@@ -1369,11 +1488,14 @@ window.deletePost = async (id) => {
         if(unsubOverlay) unsubOverlay();
         overlayMode = '';
         chatReceiverId = null;
+        clearChatPreview(); // Clean up chat preview on close
     };
 
     window.handleOverlaySend = async () => {
         const txt = document.getElementById('overlayInput').value.trim();
-        if(!txt) return;
+        const img = document.getElementById('chatPreviewWrapper').style.display === 'flex' ? document.getElementById('chatPreviewImg').src : null;
+
+        if(!txt && !img) return;
         
         try {
             if(overlayMode === 'comment') {
@@ -1396,14 +1518,17 @@ window.deletePost = async (id) => {
                 }
 
             } else {
+                // 🔥 Chat Message with optional image
                 await db.collection('messages').add({
                     chatId: activeTargetId,
                     text: txt, 
+                    image: img, // Save image data
                     sender: currentUser.uid,
                     receiverId: chatReceiverId,
                     isRead: false,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
+                clearChatPreview(); // Clear preview after sending chat message
             }
             document.getElementById('overlayInput').value = "";
         } catch(e) {
@@ -1649,7 +1774,7 @@ window.deletePost = async (id) => {
         feedUnsubscribe = db.collection('posts')
             .orderBy('timestamp', 'desc')
             .limit(50) 
-            .onSnapshot(async snap => { // 🔥 async ထည့်လိုက်ပါသည်
+            .onSnapshot(async snap => {
                 const container = document.getElementById('feedContainer');
                 container.innerHTML = "";
                 let postHtml = [];
