@@ -112,7 +112,21 @@
         .post-input:focus { background: var(--bg-card); box-shadow: inset 0 0 0 2px var(--primary-light); }
         .action-row { display: flex; justify-content: space-between; align-items: center; }
         .photo-trigger { color: var(--primary); font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 5px 10px; border-radius: 8px; background: rgba(108, 93, 211, 0.1); }
-
+        
+        /* 🔥 NEW: Image Preview Wrapper & Delete Button */
+        .preview-wrapper { 
+            position: relative; 
+            margin-bottom: 15px; 
+            display: none; /* Controlled by JS */
+        }
+        .preview-delete-btn {
+            position: absolute; top: 10px; right: 10px;
+            background: rgba(0,0,0,0.6); color: white;
+            width: 30px; height: 30px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; cursor: pointer; z-index: 10;
+        }
+        
         /* --- Feed Post --- */
         .post-card { background: var(--bg-card); border-radius: var(--border-radius); padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 20px rgba(0,0,0,0.02); transition: background 0.3s; }
         .pc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
@@ -468,7 +482,13 @@
                         <img id="postThumb" class="avatar" style="width:40px; height:40px;">
                         <textarea id="postInput" class="post-input" placeholder="What's happening?" rows="3"></textarea>
                     </div>
-                    <img id="previewImg" style="width:100%; height:auto; max-height:400px; object-fit:contain; border-radius:12px; display:none; margin-bottom:15px; background-color:var(--input-bg);">
+                    
+                    <div id="previewWrapper" class="preview-wrapper">
+                        <img id="previewImg" style="width:100%; height:auto; max-height:400px; object-fit:contain; border-radius:12px; background-color:var(--input-bg);">
+                        <div class="preview-delete-btn" onclick="clearPreviewImage()">
+                            <i class="ph ph-x-bold"></i>
+                        </div>
+                    </div>
                     <div class="action-row">
                         <label for="postFile" class="photo-trigger">
                             <i class="ph ph-image"></i> Photo
@@ -966,18 +986,34 @@
     // --- POSTS ---
     const previewFile = () => {
         const file = document.getElementById('postFile').files[0];
+        const previewImg = document.getElementById('previewImg');
+        const previewWrapper = document.getElementById('previewWrapper');
+        
         if(file) {
             const r = new FileReader();
-            r.onload = e => { document.getElementById('previewImg').src = e.target.result; document.getElementById('previewImg').style.display = 'block'; }
+            r.onload = e => { 
+                previewImg.src = e.target.result; 
+                previewWrapper.style.display = 'block'; 
+            }
             r.readAsDataURL(file);
         }
     };
+    
+    // 🔥 NEW: Function to clear the image preview
+    window.clearPreviewImage = () => {
+        document.getElementById('postFile').value = ''; // Clear file input
+        document.getElementById('previewImg').src = "";
+        document.getElementById('previewWrapper').style.display = 'none';
+        showToast("Image cleared!");
+    };
+
 
     const submitPost = async () => {
         if(!currentUser) return showToast("Please Login First!");
         const text = document.getElementById('postInput').value;
-        const img = document.getElementById('previewImg').style.display === 'block' ? document.getElementById('previewImg').src : null;
-        if(!text && !img) return;
+        // 🔥 Updated to check wrapper display status
+        const img = document.getElementById('previewWrapper').style.display === 'block' ? document.getElementById('previewImg').src : null;
+        if(!text && !img) return showToast("Post content cannot be empty.");
 
         try {
             await db.collection('posts').add({
@@ -988,8 +1024,7 @@
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
             document.getElementById('postInput').value = "";
-            document.getElementById('previewImg').style.display = 'none';
-            document.getElementById('previewImg').src = "";
+            clearPreviewImage(); // Use the new function to clear
             showToast("Post Sent!");
         } catch(e) {
             alert("Error posting.");
@@ -1691,4 +1726,4 @@ window.deletePost = async (id) => {
     };
 </script>
 </body>
-    </html>
+</html>
